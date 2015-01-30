@@ -1,11 +1,19 @@
+"""
+Perform Python operations on every line read from stdin
+"""
+
+
+import os
 import sys
 
 import click
 
 
-def pyin(stream, operation):
+def pyin(stream, operation, strip=True):
 
     for line in stream:
+        if strip:
+            line = line.strip()
         yield eval(operation)
 
 
@@ -15,17 +23,25 @@ def pyin(stream, operation):
     help="Input stream"
 )
 @click.option(
-    '-o', '--o-stream', metavar='STDOUT', type=click.File(mode='w'), default=sys.stdout,
+    '-o', '--o-stream', metavar='FILE', type=click.File(mode='w'), default=sys.stdout,
     help="Output stream"
+)
+@click.option(
+    '-s / -ns', '--strip / --no-strip', is_flag=True, default=True,
+    help="Don't strip leading and trailing whitespace"
+)
+@click.option(
+    '-n', '--newline', metavar='CHAR', default=os.linesep,
+    help="Newline character to append to every line"
 )
 @click.argument(
     'operation', type=click.STRING, required=True
 )
-def main(i_stream, operation, o_stream):
+def main(i_stream, operation, o_stream, strip, newline):
 
     try:
-        for output in pyin(i_stream, operation):
-            o_stream.write(str(output))
+        for output in pyin(i_stream, operation, strip=strip):
+            o_stream.write(str(output) + newline)
         sys.exit(0)
 
     except Exception as e:
