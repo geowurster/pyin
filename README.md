@@ -1,6 +1,8 @@
 pyin
 ====
 
+[![Build Status](https://travis-ci.org/geowurster/pyin.svg?branch=master)](https://travis-ci.org/geowurster/pyin) [![Coverage Status](https://coveralls.io/repos/geowurster/pyin/badge.svg?branch=master)](https://coveralls.io/r/geowurster/pyin?branch=master)
+
 Perform Python operations on every line read from `stdin`.  Every line is
 evaluated individually and available via a variable called `line`.
 
