@@ -57,8 +57,7 @@ class TestCli(unittest.TestCase):
         self.assertEqual(TEST_CONTENT, result.output)
 
     def test_exception(self):
-        malformed_operation = "__lin__--"
-        result = self.runner.invoke(pyin.main, ['-i', self.tempfile.name, malformed_operation])
+        result = self.runner.invoke(pyin.main, ['-i', self.tempfile.name, 'raise ValueError("whatever")'])
         self.assertNotEqual(0, result.exit_code)
 
     def test_change_newline(self):
