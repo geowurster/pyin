@@ -24,3 +24,29 @@ Examples
 Change newline character in a CSV.
 
     $ more sample-data/csv-with-header.csv | pyin "line.replace('\n', '\r\n')" > output.csv
+
+
+Developing
+----------
+
+Install:
+
+    $ pip install virtualenv
+    $ git clone https://github.com/geowurster/pyin
+    $ cd pyin
+    $ virtualenv venv
+    $ source venv/bin/activate
+    $ pip install -r requirements-dev.txt
+    $ pip install -e .
+
+Test:
+    
+    $ nosetests
+
+Coverage:
+
+    $ nosetests --with-coverage
+
+Lint:
+
+    $ pep8 --max-line-length=120 pyin.py
