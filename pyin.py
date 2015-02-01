@@ -69,11 +69,11 @@ def pyin(stream, operation):
 
 @click.command()
 @click.option(
-    '-i', '--i-stream', metavar='STDIN', type=click.File(mode='r'),
+    '-i', '--i-stream', metavar='STDIN', type=click.File(mode='r'), default=sys.stdin,
     help="Input stream."
 )
 @click.option(
-    '-o', '--o-stream', metavar='FILE', type=click.File(mode='w'),
+    '-o', '--o-stream', metavar='FILE', type=click.File(mode='w'), default=sys.stdout,
     help="Output stream."
 )
 @click.option(
