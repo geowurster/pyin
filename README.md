@@ -28,6 +28,27 @@ Change newline character in a CSV.
     $ more sample-data/csv-with-header.csv | pyin "line.replace('\n', '\r\n')" > output.csv
 
 
+Gotchas
+-------
+
+It's easy to completely modify the line content:
+
+    $ pyin -i sample-data/csv-with-header.csv "'operation'"
+    operationoperationoperationoperationoperationoperation
+
+Forgetting to use `-t` to only get lines that evaluate as `True`:
+
+    $ pyin -i LICENSE.txt "'are' in line"
+    FalseFalseFalseFalseFalseFalseTrueFalseFalseFalseFalseFalseFalseFalseFalseFalseTrueFalseFalseFalseFalseFalseFalseFalseFalseFalseFalseFalse
+    
+    $ pyin -i LICENSE.txt "'are' in line" -t
+    modification, are permitted provided that the following conditions are met:
+      derived from this software without specific prior written permission.
+
+
+
+
+
 Developing
 ----------
 
