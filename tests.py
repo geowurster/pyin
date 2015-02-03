@@ -31,18 +31,24 @@ class TestPyin(unittest.TestCase):
         self.tempfile.close()
 
     def test_pass_through(self):
-        actual = "".join(line for line in pyin.pyin(self.tempfile, 'line'))
-        self.assertEqual(TEST_CONTENT, actual)
+        for expected, actual in zip(TEST_CONTENT.splitlines(), pyin.pyin(self.tempfile, 'line')):
+            self.assertEqual(expected, actual)
 
     def test_replace_quotes(self):
-        actual = "".join(line for line in pyin.pyin(self.tempfile, """line.replace('"', "'")"""))
-        expected = TEST_CONTENT.replace('"', "'")
-        self.assertEqual(expected, actual)
+        expected_lines = [line.replace('"', "'") for line in TEST_CONTENT.splitlines()]
+        for expected, actual in zip(expected_lines, pyin.pyin(self.tempfile, """line.replace('"', "'")""")):
+            expected = expected.replace('"', "'")
+            self.assertEqual(expected, actual)
 
     def test_replace_all_lines(self):
         expected = 'wooo'
         for actual in pyin.pyin(self.tempfile, "'%s'" % expected):
             self.assertEqual(expected.strip(), actual.strip())
+
+    def test_write_true(self):
+        expected_lines = [line for line in TEST_CONTENT.splitlines() if 'l2' in line]
+        for expected, actual in zip(expected_lines, pyin.pyin(self.tempfile, "'l2' in line", write_true=True)):
+            self.assertEqual(expected, actual)
 
 
 class TestCli(unittest.TestCase):
@@ -59,7 +65,7 @@ class TestCli(unittest.TestCase):
     def test_pass_through(self):
         result = self.runner.invoke(pyin.main, ['-i', self.tempfile.name, "line"])
         self.assertEqual(0, result.exit_code)
-        self.assertEqual(TEST_CONTENT, result.output)
+        self.assertEqual(TEST_CONTENT.strip(), result.output.strip())
 
     def test_exception(self):
         result = self.runner.invoke(pyin.main, ['-i', self.tempfile.name, 'raise ValueError("whatever")'])
@@ -68,10 +74,11 @@ class TestCli(unittest.TestCase):
     def test_change_newline(self):
         nl = '__NL__'
         result = self.runner.invoke(pyin.main,
-                                    ['-i', self.tempfile.name, "line.replace(os.linesep, '%s')" % nl, '-im', 'os'])
+                                    ['-i', self.tempfile.name, "line", '-l', nl])
         self.assertEqual(0, result.exit_code)
-        expected = TEST_CONTENT.replace(os.linesep, nl)
-        self.assertEqual(expected.strip(), result.output.strip())
+        expected = nl.join(line for line in TEST_CONTENT.splitlines())
+        actual = result.output[:len(result.output) - len(nl)]
+        self.assertEqual(expected, actual)
 
     def test_block(self):
         result = self.runner.invoke(pyin.main, ['-i', self.tempfile.name, "'nothing'", '--block'])
@@ -81,6 +88,16 @@ class TestCli(unittest.TestCase):
     def test_replace_all_lines(self):
         replace = 'replacement text'
         result = self.runner.invoke(pyin.main, ['-i', self.tempfile.name, "'%s'" % replace])
-        expected = "".join(replace for i in TEST_CONTENT.splitlines())
+        expected = os.linesep.join([replace for line in TEST_CONTENT.splitlines()])
         self.assertEqual(0, result.exit_code)
-        self.assertEqual(result.output, expected)
+        self.assertEqual(expected.strip(), result.output.strip())
+
+    def test_write_true(self):
+        result = self.runner.invoke(pyin.main, ['-i', self.tempfile.name, "'l2' in line", '-t'])
+        expected = os.linesep.join(line for line in TEST_CONTENT.splitlines() if 'l2' in line)
+        self.assertEqual(expected.strip(), result.output.strip())
+
+    def test_import_additional_modules(self):
+        result = self.runner.invoke(pyin.main, ['-i', self.tempfile.name, "os.path.isdir(line)", '-m', 'os'])
+        expected = os.linesep.join(str(os.path.isdir(line)) for line in TEST_CONTENT.splitlines())
+        self.assertEqual(expected.strip(), result.output.strip())

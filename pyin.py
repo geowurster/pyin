@@ -3,6 +3,7 @@ Perform Python operations on every line streamed from stdin
 """
 
 
+import os
 import sys
 
 import click
@@ -44,10 +45,30 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 '''
 
 
-def pyin(stream, operation):
+def pyin(stream, operation, strip=True, write_true=False):
 
     """
     Read lines from an input stream and apply the same operation to every line.
+
+    Examples
+    --------
+
+    Change all lines to uppercase:
+
+    >>> import os
+    >>> import sys
+    >>> from pyin import pyin
+    >>> with open('sample-data/csv-with-header.csv') as f:
+    ...    for line in pyin(f, "line.upper()"):
+    ...         sys.stdout.write(line + os.linesep)
+
+    Extract the second column from a CSV:
+
+    >>> import os
+    >>> from pyin import pyin
+    >>> with open('sample-data/csv-with-header.csv') as f:
+    ...     for line in pyin(f, "line.split(',')[1]"):
+    ...         sys.stdout.write(line + os.linesep)
 
     Parameters
     ----------
@@ -56,6 +77,10 @@ def pyin(stream, operation):
     operation : string
         Expression to be evaluated by `eval()`.  Lines are accessible via a
         variable named 'line'.
+    strip : bool, optional
+        Strip trailing whitespace and newline characters.
+    write_true : bool, optional
+        Only write lines if the operation evaluates as `True`.
 
     Yields
     ------
@@ -64,8 +89,14 @@ def pyin(stream, operation):
     """
 
     for line in stream:
-        yield eval(operation)
+        if strip:
+            line = line.rstrip()
 
+        # Only yield lines that evaluate as True
+        if not write_true:
+            yield eval(operation)
+        elif write_true and eval(operation):
+            yield line
 
 @click.command()
 @click.option(
@@ -81,14 +112,26 @@ def pyin(stream, operation):
     help="Apply operation to entire input."
 )
 @click.option(
-    '-im', '--import', 'import_modules', metavar='MODULE', multiple=True,
-    help="Import module"
+    '-m', '--import', 'import_modules', metavar='MODULE', multiple=True,
+    help="Import additional modules."
+)
+@click.option(
+    '-l', '--linesep', metavar='CHAR', default=os.linesep,
+    help="Output linesep character."
+)
+@click.option(
+    '-n', '--no-strip', is_flag=True, default=True,
+    help="Don't strip trailing linesep and whitespace on read."
+)
+@click.option(
+    '-t', '--write-true', is_flag=True,
+    help="Write lines if the operation evaluates as True."
 )
 @click.argument(
     'operation', type=click.STRING, required=True
 )
 @click.version_option(version=__version__)
-def main(i_stream, operation, o_stream, block, import_modules):
+def main(i_stream, operation, o_stream, block, import_modules, linesep, no_strip, write_true):
 
     """
     Perform Python operations on every line read from stdin.
@@ -96,19 +139,17 @@ def main(i_stream, operation, o_stream, block, import_modules):
 
     try:
 
+        # Additional imports
         for module in import_modules:
             globals()[module] = __import__(module)
 
+        # Prepare input for block processing mode by reading everything into a single string inside of a list
+        # The block will be processed on the first and only iteration.
         if block:
             i_stream = [i_stream.read()]
 
-        # Have to kind of hack click.echo() in order to get it to work in the testing module and here
-        # For some reason using o_stream.write() works here but is not captured by the CliRunner()
-        # class that is used to test.  The argument 'file' sets the output stream to whatever the user specifies
-        # and since the input lines already have a newline character, setting 'nl' to an empty string prevents
-        # two newline characters from being written
-        for output in pyin(i_stream, operation):
-            click.echo(output, file=o_stream, nl='')
+        for output in pyin(i_stream, operation, strip=no_strip is True, write_true=write_true):
+            click.echo(str(output) + linesep, file=o_stream, nl=False)
         sys.exit(0)
 
     except Exception as e:
