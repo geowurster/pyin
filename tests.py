@@ -77,3 +77,10 @@ class TestCli(unittest.TestCase):
         result = self.runner.invoke(pyin.main, ['-i', self.tempfile.name, "'nothing'", '--block'])
         self.assertEqual(0, result.exit_code)
         self.assertEqual('nothing', result.output.strip())
+
+    def test_replace_all_lines(self):
+        replace = 'replacement text'
+        result = self.runner.invoke(pyin.main, ['-i', self.tempfile.name, "'%s'" % replace])
+        expected = "".join(replace for i in TEST_CONTENT.splitlines())
+        self.assertEqual(0, result.exit_code)
+        self.assertEqual(result.output, expected)
