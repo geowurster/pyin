@@ -112,5 +112,5 @@ def main(i_stream, operation, o_stream, block, import_modules):
         sys.exit(0)
 
     except Exception as e:
-        click.echo(e.message, err=True)
+        click.echo("ERROR: Encountered an exception: %s" % repr(e), err=True)
         sys.exit(1)
