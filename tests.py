@@ -39,6 +39,11 @@ class TestPyin(unittest.TestCase):
         expected = TEST_CONTENT.replace('"', "'")
         self.assertEqual(expected, actual)
 
+    def test_replace_all_lines(self):
+        expected = 'wooo'
+        for actual in pyin.pyin(self.tempfile, "'%s'" % expected):
+            self.assertEqual(expected.strip(), actual.strip())
+
 
 class TestCli(unittest.TestCase):
 

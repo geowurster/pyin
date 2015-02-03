@@ -69,11 +69,11 @@ def pyin(stream, operation):
 
 @click.command()
 @click.option(
-    '-i', '--i-stream', metavar='STDIN', type=click.File(mode='r'), default=sys.stdin,
+    '-i', '--i-stream', metavar='STDIN', type=click.File(mode='r'), default='-',
     help="Input stream."
 )
 @click.option(
-    '-o', '--o-stream', metavar='FILE', type=click.File(mode='w'), default=sys.stdout,
+    '-o', '--o-stream', metavar='FILE', type=click.File(mode='w'), default='-',
     help="Output stream."
 )
 @click.option(
@@ -108,7 +108,7 @@ def main(i_stream, operation, o_stream, block, import_modules):
         # and since the input lines already have a newline character, setting 'nl' to an empty string prevents
         # two newline characters from being written
         for output in pyin(i_stream, operation):
-            click.echo(str(output), file=o_stream, nl='')
+            click.echo(output, file=o_stream, nl='')
         sys.exit(0)
 
     except Exception as e:
