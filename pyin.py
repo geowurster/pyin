@@ -90,8 +90,7 @@ def pyin(stream, operation, strip=True, write_true=False):
     """
 
     for line in stream:
-        if strip and isinstance(line, (str, unicode)):
-            line = line.rstrip()
+        line = line.rstrip()
 
         # Only yield lines that evaluate as True
         if not write_true:
