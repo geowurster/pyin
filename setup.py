@@ -8,19 +8,41 @@ Setup script for pyin
 
 import setuptools
 
-import pyin
-
 
 with open('README.md') as f:
-    readme = f.read().strip()
+    readme_content = f.read().strip()
+
 
 with open('requirements.txt') as f:
     install_requires = f.read().strip()
 
 
+with open('LICENSE.txt') as f:
+    license_content = f.read().strip()
+
+
+version = None
+author = None
+email = None
+source = None
+with open('pyin.py') as f:
+    for line in f:
+        if line.strip().startswith('__version__'):
+            version = line.split('=')[1].strip().replace('"', '').replace("'", '')
+        elif line.strip().startswith('__author__'):
+            author = line.split('=')[1].strip().replace('"', '').replace("'", '')
+        elif line.strip().startswith('__email__'):
+            email = line.split('=')[1].strip().replace('"', '').replace("'", '')
+        elif line.strip().startswith('__source__'):
+            source = line.split('=')[1].strip().replace('"', '').replace("'", '')
+        elif None not in (version, author, email, source):
+            break
+
+
 setuptools.setup(
-    author=pyin.__author__,
-    author_email=pyin.__email__,
+    name='pyin',
+    author=author,
+    author_email=email,
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
@@ -29,18 +51,17 @@ setuptools.setup(
         'Topic :: Text Processing :: General',
         'Topic :: Utilities'
     ],
-    description="streaming text processing",
+    description="basic streaming text processing",
     entry_points="""
         [console_scripts]
         pyin=pyin:main
     """,
     include_package_data=True,
     install_requires=install_requires,
-    license=pyin.__license__,
-    long_description=readme,
-    name=pyin.__name__,
+    license=license_content,
+    long_description=readme_content,
     py_modules=['pyin'],
-    url=pyin.__source__,
-    version=pyin.__version__,
+    url=source,
+    version=version,
     zip_safe=True,
 )
