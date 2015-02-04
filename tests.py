@@ -98,6 +98,6 @@ class TestCli(unittest.TestCase):
         self.assertEqual(expected.strip(), result.output.strip())
 
     def test_import_additional_modules(self):
-        result = self.runner.invoke(pyin.main, ['-i', self.tempfile.name, "os.path.isdir(line)", '-m', 'os'])
+        result = self.runner.invoke(pyin.main, ['-i', self.tempfile.name, "str(os.path.isdir(line))", '-m', 'os'])
         expected = os.linesep.join(str(os.path.isdir(line)) for line in TEST_CONTENT.splitlines())
         self.assertEqual(expected.strip(), result.output.strip())
