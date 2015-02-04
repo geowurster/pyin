@@ -7,6 +7,7 @@ import os
 import sys
 
 import click
+from str2type import str2type
 
 
 __version__ = '0.2.1'
@@ -89,7 +90,7 @@ def pyin(stream, operation, strip=True, write_true=False):
     """
 
     for line in stream:
-        if strip:
+        if strip and isinstance(line, (str, unicode)):
             line = line.rstrip()
 
         # Only yield lines that evaluate as True
@@ -97,6 +98,32 @@ def pyin(stream, operation, strip=True, write_true=False):
             yield eval(operation)
         elif write_true and eval(operation):
             yield line
+
+
+def _parse_key_vals(key_vals):
+
+    """
+    Parse `KEY=VAL` pairs collected from the commandline
+    Turns: `['k1=v1', 'k2=v2']`
+    Into: `{'k1': 'v1', 'k2': 'v2'}`
+
+    Parameters
+    ----------
+    key_vals : tuple or list
+
+    Raises
+    ------
+    ValueError
+        Key=val pair does not contain an '='.
+
+    Returns
+    -------
+    dict
+        Parsed {'key1': 'val1', 'key2': 'val2}
+    """
+
+    return {pair.split('=')[0]: str2type(pair.split('=')[1]) for pair in key_vals}
+
 
 @click.command()
 @click.option(
@@ -127,15 +154,46 @@ def pyin(stream, operation, strip=True, write_true=False):
     '-t', '--write-true', is_flag=True,
     help="Write lines if the operation evaluates as True."
 )
+@click.option(
+    '-r', '--reader', metavar='NAME',
+    help="Load input stream into the specified reader."
+)
+@click.option(
+    '-ro', '--reader-option', metavar='KEY=VAL', multiple=True,
+    help="Keyword arguments for reader."
+)
+@click.option(
+    '-w', '--writer', metavar='NAME',
+    help="Load output stream into specified writer."
+)
+@click.option(
+    '-wo', '--writer-option', metavar='KEY=VAL', multiple=True,
+    help="Keyword arguments for writer."
+)
+@click.option(
+    '-wm', '--write-method', metavar="NAME", default='write',
+    help="Call this method instead of 'writer.write()'."
+)
 @click.argument(
     'operation', type=click.STRING, required=True
 )
 @click.version_option(version=__version__)
-def main(i_stream, operation, o_stream, block, import_modules, linesep, no_strip, write_true):
+def main(i_stream, operation, o_stream, block, import_modules, linesep, no_strip, write_true,
+         reader, reader_option, writer, writer_option, write_method):
 
     """
     Perform Python operations on every line read from stdin.
     """
+
+    # Parse and format key=val reader/writer options immediately
+    if reader_option:
+        reader_option = _parse_key_vals(reader_option)
+    else:
+        reader_option = {}
+    if writer_option:
+        writer_option = _parse_key_vals(writer_option)
+    else:
+        writer_option = {}
 
     try:
 
@@ -148,8 +206,27 @@ def main(i_stream, operation, o_stream, block, import_modules, linesep, no_strip
         if block:
             i_stream = [i_stream.read()]
 
-        for output in pyin(i_stream, operation, strip=no_strip is True, write_true=write_true):
-            click.echo(str(output) + linesep, file=o_stream, nl=False)
+        # Create reader if specified otherwise just use the input stream
+        if reader is not None:
+            _reader_class = eval(reader)
+            loaded_reader = _reader_class(i_stream, **reader_option)
+
+        else:
+            loaded_reader = i_stream
+
+        # Create reader if specified otherwise just use the input stream
+        if writer is not None:
+            _writer_class = eval(writer)
+            loaded_writer = _writer_class(o_stream, **writer_option)
+            loaded_writer.__class__.__dict__['write'] = loaded_writer.__class__.__dict__[write_method]
+        else:
+            loaded_writer = o_stream
+
+        # Stream lines and process
+        for output in pyin(loaded_reader, operation, strip=no_strip is True, write_true=write_true):
+            if linesep:
+                output += linesep
+            loaded_writer.write(output)
         sys.exit(0)
 
     except Exception as e:
