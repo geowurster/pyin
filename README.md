@@ -27,6 +27,16 @@ Change newline character in a CSV.
 
     $ more sample-data/csv-with-header.csv | pyin "line.replace('\n', '\r\n')" > output.csv
 
+Extract a BigQuery schema from an existing table and pretty print it:
+
+```console
+$ bq show --format=json ${DATASET}.${TABLE} | pyin -m json -m pprint "pprint.pformat(json.loads(line)['schema']['fields'])"
+[{u'mode': u'NULLABLE', u'name': u'mmsi', u'type': u'STRING'},
+{u'mode': u'NULLABLE', u'name': u'longitude', u'type': u'FLOAT'},
+{u'mode': u'NULLABLE', u'name': u'latitude', u'type': u'FLOAT'}
+...]
+```
+
 
 Gotchas
 -------
