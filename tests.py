@@ -3,7 +3,10 @@ Unittests for pyin
 """
 
 
-import codecs
+from __future__ import unicode_literals
+
+import csv
+import json
 import os
 import tempfile
 import unittest
@@ -98,14 +101,26 @@ class TestCli(unittest.TestCase):
         self.assertEqual(expected.strip(), result.output.strip())
 
     def test_write_on_true(self):
-        result = self.runner.invoke(pyin.main, ['-i', self.tempfile.name, '"field" in line', '-ot', 'line.split(",")'])
+        expected = 'expected'
+        result = self.runner.invoke(pyin.main, ['-i', self.tempfile.name, '"field" in line', '-ot', "'%s'" % expected])
         self.assertEqual(0, result.exit_code)
-        expected = str(TEST_CONTENT.splitlines()[0].strip().split(','))
         self.assertEqual(expected, result.output.strip())
 
     def test_import_additional_modules(self):
         result = self.runner.invoke(pyin.main, ['-i', self.tempfile.name, "str(os.path.isdir(line))", '-im', 'os'])
         expected = os.linesep.join(str(os.path.isdir(line)) for line in TEST_CONTENT.splitlines())
+        self.assertEqual(expected.strip(), result.output.strip())
+
+    def test_reader_writer(self):
+        result = self.runner.invoke(pyin.main, [
+            '-im', 'csv', '-i', self.tempfile.name,
+            '-r', 'csv.DictReader', '-w', 'csv.DictWriter', '-wm', 'writerow',
+            '-ro', 'fieldnames=["field1","field2"]',
+            '-wo', 'fieldnames=["field1","field2"]', '-wo', 'extrasaction=ignore',
+            "line"
+        ])
+        expected = os.linesep.join(["field1,field2", "l1f1,l1f2", "l2f1,l2f2", "l3f1,l3f2", "l4f1,l4f2", "l5f1,l5f2"])
+        self.assertEqual(0, result.exit_code)
         self.assertEqual(expected.strip(), result.output.strip())
 
 
@@ -117,7 +132,7 @@ class TestKeyValToDict(unittest.TestCase):
         self.assertDictEqual(expected, pyin._key_val_to_dict(None, None, value))
 
     def test_exception(self):
-        self.assertRaises(ValueError, pyin._key_val_to_dict, None, None, ('nothing'))
+        self.assertRaises(ValueError, pyin._key_val_to_dict, None, None, ['nothing'])
 
 
 def test_default_reader_writer():
