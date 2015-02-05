@@ -61,7 +61,9 @@ Forgetting to use `-t` to only get lines that evaluate as `True`:
     modification, are permitted provided that the following conditions are met:
       derived from this software without specific prior written permission.
 
+Specifying JSON:
 
+    $ -ro fieldnames='["field1","field2"]'
 
 
 
