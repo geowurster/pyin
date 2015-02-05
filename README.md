@@ -37,6 +37,12 @@ $ bq show --format=json ${DATASET}.${TABLE} | pyin -m json -m pprint "pprint.pfo
 ...]
 ```
 
+Read the first 100K lines of a CSV and write the 
+
+head -100000 ${INFILE} | pyin -r csv.DictReader -m csv "line['Msg type'] == '5'" -n -t -l '' -w newlinejson.Writer -m newlinejson -wm writerow > ~/github/VesselInfo/Data/100K-Sample-Type5.json
+
+
+
 
 Gotchas
 -------
