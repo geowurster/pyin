@@ -3,11 +3,17 @@ Perform Python operations on every line streamed from stdin
 """
 
 
+import codecs
 import os
 import sys
 
 import click
+from derive import BaseReader as DefaultReader
+from derive import BaseWriter as DefaultWriter
 from str2type import str2type
+
+
+__all__ = ['pyin']
 
 
 __version__ = '0.2.1'
@@ -46,7 +52,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 '''
 
 
-def pyin(stream, operation, strip=True, write_true=False):
+# Python 2/3 compatibility
+PY3 = sys.version_info[0] == 3
+if PY3:  # pragma no cover
+    STR_TYPES = (str)
+else:  # pragma no cover
+    STR_TYPES = (str, unicode)
+
+
+def pyin(stream, operation, strip=True, write_true=False, on_true=None):
 
     """
     Read lines from an input stream and apply the same operation to every line.
@@ -90,38 +104,54 @@ def pyin(stream, operation, strip=True, write_true=False):
     """
 
     for line in stream:
-        line = line.rstrip()
+        if strip and hasattr(line, 'rstrip'):
+            line = line.rstrip()
 
         # Only yield lines that evaluate as True
         if not write_true:
             yield eval(operation)
         elif write_true and eval(operation):
-            yield line
+            if on_true is not None:
+                yield eval(on_true)
+            else:
+                yield line
 
 
-def _parse_key_vals(key_vals):
+def _key_val_to_dict(ctx, param, value):
 
     """
-    Parse `KEY=VAL` pairs collected from the commandline
-    Turns: `['k1=v1', 'k2=v2']`
-    Into: `{'k1': 'v1', 'k2': 'v2'}`
+    Some options like `-ro` take `key=val` pairs that need to be transformed
+    into `{'key': 'val}`.  This function can be used as a callback to handle
+    all options for a specific flag, for example if the user specifies 3 reader
+    options like `-ro key1=val1 -ro key2=val2 -ro key3=val3` then `click` uses
+    this function to produce `{'key1': 'val1', 'key2': 'val2', 'key3': 'val3'}`.
 
     Parameters
     ----------
-    key_vals : tuple or list
-
-    Raises
-    ------
-    ValueError
-        Key=val pair does not contain an '='.
+    ctx : click.Context
+        Ignored
+    param : click.Option
+        Ignored
+    value : tuple
+        All collected key=val values for an option.
 
     Returns
     -------
     dict
-        Parsed {'key1': 'val1', 'key2': 'val2}
     """
 
-    return {pair.split('=')[0]: str2type(pair.split('=')[1]) for pair in key_vals}
+    output = {}
+    for pair in value:
+        if '=' not in pair:
+            raise ValueError("Incorrect syntax for KEY=VAL argument: `%s'" % pair)
+        else:
+            key, val = pair.split('=')
+            val = str2type(val)
+            if isinstance(val, STR_TYPES):
+                val = codecs.decode(val, 'unicode_escape')
+            output[key] = val
+
+    return output
 
 
 @click.command()
@@ -134,39 +164,39 @@ def _parse_key_vals(key_vals):
     help="Output stream."
 )
 @click.option(
-    '-b', '--block', is_flag=True, default=False,
-    help="Apply operation to entire input."
-)
-@click.option(
-    '-m', '--import', 'import_modules', metavar='MODULE', multiple=True,
+    '-im', '--import', 'import_modules', metavar='MODULE', multiple=True,
     help="Import additional modules."
 )
 @click.option(
-    '-l', '--linesep', metavar='CHAR', default=os.linesep,
-    help="Output linesep character."
+    '-nl', '--newline', metavar='CHAR', default=os.linesep,
+    help="Output newline character."
 )
 @click.option(
-    '-n', '--no-strip', is_flag=True, default=True,
-    help="Don't strip trailing linesep and whitespace on read."
+    '-ns', '--no-strip', is_flag=True, default=True,
+    help="Don't call `line.rstrip()` before operation."
 )
 @click.option(
     '-t', '--write-true', is_flag=True,
-    help="Write lines if the operation evaluates as True."
+    help="Write lines if operation evaluates as True."
 )
 @click.option(
-    '-r', '--reader', metavar='NAME',
+    '-ot', '--on-true', metavar='OPERATION',
+    help="Additional operation if line is True."
+)
+@click.option(
+    '-r', '--reader', metavar='NAME', default='DefaultReader',
     help="Load input stream into the specified reader."
 )
 @click.option(
-    '-ro', '--reader-option', metavar='KEY=VAL', multiple=True,
+    '-ro', '--reader-option', metavar='KEY=VAL', multiple=True, callback=_key_val_to_dict,
     help="Keyword arguments for reader."
 )
 @click.option(
-    '-w', '--writer', metavar='NAME',
+    '-w', '--writer', metavar='NAME', default='DefaultWriter',
     help="Load output stream into specified writer."
 )
 @click.option(
-    '-wo', '--writer-option', metavar='KEY=VAL', multiple=True,
+    '-wo', '--writer-option', metavar='KEY=VAL', multiple=True, callback=_key_val_to_dict,
     help="Keyword arguments for writer."
 )
 @click.option(
@@ -174,25 +204,15 @@ def _parse_key_vals(key_vals):
     help="Call this method instead of 'writer.write()'."
 )
 @click.argument(
-    'operation', type=click.STRING, required=True
+    'operation', required=True
 )
 @click.version_option(version=__version__)
-def main(i_stream, operation, o_stream, block, import_modules, linesep, no_strip, write_true,
-         reader, reader_option, writer, writer_option, write_method):
+def main(i_stream, operation, o_stream, import_modules, newline, no_strip, write_true, reader, reader_option,
+         writer, writer_option, write_method, on_true):
 
     """
     Perform Python operations on every line read from stdin.
     """
-
-    # Parse and format key=val reader/writer options immediately
-    if reader_option:
-        reader_option = _parse_key_vals(reader_option)
-    else:
-        reader_option = {}
-    if writer_option:
-        writer_option = _parse_key_vals(writer_option)
-    else:
-        writer_option = {}
 
     try:
 
@@ -200,32 +220,22 @@ def main(i_stream, operation, o_stream, block, import_modules, linesep, no_strip
         for module in import_modules:
             globals()[module] = __import__(module)
 
-        # Prepare input for block processing mode by reading everything into a single string inside of a list
-        # The block will be processed on the first and only iteration.
-        if block:
-            i_stream = [i_stream.read()]
+        # Allow user to specify -ot without -t and still enable -t
+        if on_true is not None:
+            write_true = True
 
-        # Create reader if specified otherwise just use the input stream
-        if reader is not None:
-            _reader_class = eval(reader)
-            loaded_reader = _reader_class(i_stream, **reader_option)
-
-        else:
-            loaded_reader = i_stream
-
-        # Create reader if specified otherwise just use the input stream
-        if writer is not None:
-            _writer_class = eval(writer)
-            loaded_writer = _writer_class(o_stream, **writer_option)
-            loaded_writer.__class__.__dict__['write'] = loaded_writer.__class__.__dict__[write_method]
-        else:
-            loaded_writer = o_stream
+        # Prep reader and writer
+        # Readers like csv.DictReader yield lines that aren't strings and since the default writer
+        # blindly casts everything to a string, its a lot easier if it just handles the newline character
+        # as well so its important to make sure it receives that option.
+        if writer == 'DefaultWriter' and 'newline' not in writer_option:
+            writer_option['newline'] = newline
+        loaded_reader = eval(reader)(i_stream, **reader_option)
+        loaded_writer = eval(writer)(o_stream, **writer_option)
 
         # Stream lines and process
-        for output in pyin(loaded_reader, operation, strip=no_strip is True, write_true=write_true):
-            if linesep:
-                output += linesep
-            loaded_writer.write(output)
+        for output in pyin(loaded_reader, operation, strip=no_strip is True, write_true=write_true, on_true=on_true):
+            getattr(loaded_writer, write_method)(output)
         sys.exit(0)
 
     except Exception as e:
