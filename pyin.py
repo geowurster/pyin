@@ -60,7 +60,7 @@ else:  # pragma no cover
     STR_TYPES = (str, unicode)
 
 
-def pyin(stream, operation, strip=True, write_true=False, on_true=None):
+def pyin(reader, operation, strip=True, write_true=False, on_true=None):
 
     """
     Read lines from an input stream and apply the same operation to every line.
@@ -87,7 +87,7 @@ def pyin(stream, operation, strip=True, write_true=False, on_true=None):
 
     Parameters
     ----------
-    stream : file
+    reader : file
         File-like object that yields one line every iteration.
     operation : string
         Expression to be evaluated by `eval()`.  Lines are accessible via a
@@ -103,16 +103,26 @@ def pyin(stream, operation, strip=True, write_true=False, on_true=None):
         The result of `eval(operation)`.
     """
 
-    for line in stream:
-        if strip and hasattr(line, 'rstrip'):
+    # Don't let the user have access to variables they don't need access to.
+    _operation = operation
+    del operation
+    _strip = strip
+    del strip
+    _write_true = write_true
+    del write_true
+    _on_true = on_true
+    del on_true
+
+    for line in reader:
+        if _strip and hasattr(line, 'rstrip'):
             line = line.rstrip()
 
         # Only yield lines that evaluate as True
-        if not write_true:
-            yield eval(operation)
-        elif write_true and eval(operation):
-            if on_true is not None:
-                yield eval(on_true)
+        if not _write_true:
+            yield eval(_operation)
+        elif _write_true and eval(_operation):
+            if _on_true is not None:
+                yield eval(_on_true)
             else:
                 yield line
 
