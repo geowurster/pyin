@@ -209,7 +209,7 @@ def _key_val_to_dict(ctx, param, value):
 )
 @click.option(
     '-wm', '--write-method', metavar="NAME", default='write',
-    help="Call this method instead of 'writer.write()'."
+    help="Call this method instead of `writer.write()`."
 )
 @click.option(
     '-b', '--block', is_flag=True,
