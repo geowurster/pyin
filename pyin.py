@@ -157,8 +157,6 @@ def _key_val_to_dict(ctx, param, value):
         else:
             key, val = pair.split('=')
             val = str2type(val)
-            if isinstance(val, STR_TYPES):
-                val = codecs.decode(val, 'unicode_escape')
             output[key] = val
 
     return output
