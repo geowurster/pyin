@@ -128,6 +128,20 @@ class TestCli(unittest.TestCase):
         self.assertEqual(0, result.exit_code)
         self.assertEqual('nothing', result.output.strip())
 
+    def test_variable(self):
+        new_var = 'WOO'
+        result = self.runner.invoke(pyin.main, ['-i', self.tempfile.name, "new_var", '-v', 'new_var=%s' % new_var])
+        self.assertEqual(0, result.exit_code)
+        expected = os.linesep.join(new_var for line in self.tempfile)
+        self.assertEqual(expected.strip(), result.output.strip())
+
+    def test_statment(self):
+        print_line = 'WOO'
+        result = self.runner.invoke(pyin.main, ['-i', self.tempfile.name, "line", '-s', "print('%s')" % print_line])
+        self.assertEqual(0, result.exit_code)
+        expected = print_line + os.linesep + TEST_CONTENT
+        self.assertEqual(expected.strip(), result.output.strip())
+
 
 class TestKeyValToDict(unittest.TestCase):
 

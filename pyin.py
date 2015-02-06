@@ -217,12 +217,20 @@ def _key_val_to_dict(ctx, param, value):
     '-b', '--block', is_flag=True,
     help="Treat all input text as a single line."
 )
+@click.option(
+    '-v', '--variable', metavar='VAR=VAL', multiple=True, callback=_key_val_to_dict,
+    help="Assign variables for access in operation."
+)
+@click.option(
+    '-s', '--statement', metavar='CODE', multiple=True,
+    help="Execute a statement after imports."
+)
 @click.argument(
     'operation', required=True
 )
 @click.version_option(version=__version__)
 def main(i_stream, operation, o_stream, import_modules, newline, no_strip, write_true, reader, reader_option,
-         writer, writer_option, write_method, on_true, block):
+         writer, writer_option, write_method, on_true, block, variable, statement):
 
     """
     Perform Python operations on every line read from stdin.
@@ -233,6 +241,14 @@ def main(i_stream, operation, o_stream, import_modules, newline, no_strip, write
         # Additional imports
         for module in import_modules:
             globals()[module] = __import__(module)
+
+        # Execute additional statements
+        for s in statement:
+            exec(s)
+
+        # Assign additional variables
+        for var, val in variable.items():
+            globals()[var] = val
 
         # Allow user to specify -ot without -t and still enable -t
         if on_true is not None:
