@@ -213,12 +213,16 @@ def _key_val_to_dict(ctx, param, value):
     '-wm', '--write-method', metavar="NAME", default='write',
     help="Call this method instead of 'writer.write()'."
 )
+@click.option(
+    '-b', '--block', is_flag=True,
+    help="Treat all input text as a single line."
+)
 @click.argument(
     'operation', required=True
 )
 @click.version_option(version=__version__)
 def main(i_stream, operation, o_stream, import_modules, newline, no_strip, write_true, reader, reader_option,
-         writer, writer_option, write_method, on_true):
+         writer, writer_option, write_method, on_true, block):
 
     """
     Perform Python operations on every line read from stdin.
@@ -233,6 +237,10 @@ def main(i_stream, operation, o_stream, import_modules, newline, no_strip, write
         # Allow user to specify -ot without -t and still enable -t
         if on_true is not None:
             write_true = True
+
+        # Prepare block mode
+        if block:
+            i_stream = iter([i_stream.read()])
 
         # Prep reader and writer
         # Readers like csv.DictReader yield lines that aren't strings and since the default writer

@@ -123,6 +123,11 @@ class TestCli(unittest.TestCase):
         self.assertEqual(0, result.exit_code)
         self.assertEqual(expected.strip(), result.output.strip())
 
+    def test_block(self):
+        result = self.runner.invoke(pyin.main, ['-i', self.tempfile.name, "'nothing'", '--block'])
+        self.assertEqual(0, result.exit_code)
+        self.assertEqual('nothing', result.output.strip())
+
 
 class TestKeyValToDict(unittest.TestCase):
 
