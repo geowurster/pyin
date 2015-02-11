@@ -15,7 +15,7 @@ import str2type as _str2type
 __all__ = ['pyin']
 
 
-__version__ = '0.3.2'
+__version__ = '0.3.3'
 __author__ = 'Kevin Wurster'
 __email__ = 'wursterk@gmail.com'
 __source__ = 'https://github.com/geowurster/pyin'
