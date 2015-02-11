@@ -79,10 +79,10 @@ class TestCli(unittest.TestCase):
         result = self.runner.invoke(pyin.main, ['-i', self.tempfile.name, 'raise ValueError("whatever")'])
         self.assertNotEqual(0, result.exit_code)
 
-    def test_change_newline(self):
+    def test_change_linesep(self):
         nl = '__NL__'
         result = self.runner.invoke(pyin.main,
-                                    ['-i', self.tempfile.name, "line", '-nl', nl])
+                                    ['-i', self.tempfile.name, "line", '-ls', nl])
         self.assertEqual(0, result.exit_code)
         expected = nl.join(line for line in TEST_CONTENT.splitlines())
         actual = result.output[:len(result.output) - len(nl)]
@@ -120,7 +120,7 @@ class TestCli(unittest.TestCase):
             "line"
         ])
         expected = os.linesep.join(["field1,field2", "l1f1,l1f2", "l2f1,l2f2", "l3f1,l3f2", "l4f1,l4f2", "l5f1,l5f2"])
-        self.assertEqual(0, result.exit_code)
+        self.assertEqual(0, result.exit_code, result.output)
         self.assertEqual(expected.strip(), result.output.strip())
 
     def test_block(self):
@@ -135,7 +135,7 @@ class TestCli(unittest.TestCase):
         expected = os.linesep.join(new_var for line in self.tempfile)
         self.assertEqual(expected.strip(), result.output.strip())
 
-    def test_statment(self):
+    def test_statement(self):
         print_line = 'WOO'
         result = self.runner.invoke(pyin.main, ['-i', self.tempfile.name, "line", '-s', "print('%s')" % print_line])
         self.assertEqual(0, result.exit_code)
@@ -143,17 +143,6 @@ class TestCli(unittest.TestCase):
         self.assertEqual(expected.strip(), result.output.strip())
 
 
-class TestKeyValToDict(unittest.TestCase):
-
-    def test_standard(self):
-        value = ('key1=val1', 'key2=val2', 'key3=val3')
-        expected = {'key1': 'val1', 'key2': 'val2', 'key3': 'val3'}
-        self.assertDictEqual(expected, pyin._key_val_to_dict(None, None, value))
-
-    def test_exception(self):
-        self.assertRaises(ValueError, pyin._key_val_to_dict, None, None, ['nothing'])
-
-
 def test_default_reader_writer():
-    assert hasattr(pyin, 'DefaultReader')
-    assert hasattr(pyin, 'DefaultWriter')
+    assert hasattr(pyin, '_DefaultReader')
+    assert hasattr(pyin, '_DefaultWriter')

@@ -65,6 +65,11 @@ Specifying JSON:
 
     $ -ro fieldnames='["field1","field2"]'
 
+Get a list of variables available by default to the `operation` argument:
+
+    $ cat LICENSE.txt | pyin line -s "print(globals().keys()); exit()"
+    ['main', '_str2type', '_STR_TYPES', '__all__', '_os', '__builtins__', '__source__', '__file__', '_click', '_DefaultReader', '_sys', '__package__', '__email__', '__author__', '_PY3', 'pyin', '__name__', '__version__', '__license__', '__doc__', '_DefaultWriter']
+
 
 
 Developing

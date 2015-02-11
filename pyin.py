@@ -3,14 +3,13 @@ Perform Python operations on every line streamed from stdin
 """
 
 
-import codecs
-import os
-import sys
+import os as _os
+import sys as _sys
 
-import click
-from derive import BaseReader as DefaultReader
-from derive import BaseWriter as DefaultWriter
-from str2type import str2type
+import click as _click
+from derive import BaseReader as _DefaultReader
+from derive import BaseWriter as _DefaultWriter
+import str2type as _str2type
 
 
 __all__ = ['pyin']
@@ -23,7 +22,7 @@ __source__ = 'https://github.com/geowurster/pyin'
 __license__ = '''
 New BSD License
 
-Copyright (c) 2014, Kevin D. Wurster
+Copyright (c) 2015, Kevin D. Wurster
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -53,11 +52,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 # Python 2/3 compatibility
-PY3 = sys.version_info[0] == 3
-if PY3:  # pragma no cover
-    STR_TYPES = (str)
+_PY3 = _sys.version_info[0] == 3
+if _PY3:  # pragma no cover
+    _STR_TYPES = (str)
 else:  # pragma no cover
-    STR_TYPES = (str, unicode)
+    _STR_TYPES = (str, unicode)
 
 
 def pyin(reader, operation, strip=True, write_true=False, on_true=None):
@@ -93,7 +92,7 @@ def pyin(reader, operation, strip=True, write_true=False, on_true=None):
         Expression to be evaluated by `eval()`.  Lines are accessible via a
         variable named 'line'.
     strip : bool, optional
-        Strip trailing whitespace and newline characters.
+        Strip trailing whitespace and linesep characters.
     write_true : bool, optional
         Only write lines if the operation evaluates as `True`.
 
@@ -127,107 +126,72 @@ def pyin(reader, operation, strip=True, write_true=False, on_true=None):
                 yield line
 
 
-def _key_val_to_dict(ctx, param, value):
-
-    """
-    Some options like `-ro` take `key=val` pairs that need to be transformed
-    into `{'key': 'val}`.  This function can be used as a callback to handle
-    all options for a specific flag, for example if the user specifies 3 reader
-    options like `-ro key1=val1 -ro key2=val2 -ro key3=val3` then `click` uses
-    this function to produce `{'key1': 'val1', 'key2': 'val2', 'key3': 'val3'}`.
-
-    Parameters
-    ----------
-    ctx : click.Context
-        Ignored
-    param : click.Option
-        Ignored
-    value : tuple
-        All collected key=val values for an option.
-
-    Returns
-    -------
-    dict
-    """
-
-    output = {}
-    for pair in value:
-        if '=' not in pair:
-            raise ValueError("Incorrect syntax for KEY=VAL argument: `%s'" % pair)
-        else:
-            key, val = pair.split('=')
-            val = str2type(val)
-            output[key] = val
-
-    return output
-
-
-@click.command()
-@click.option(
-    '-i', '--i-stream', metavar='STDIN', type=click.File(mode='r'), default='-',
+@_click.command()
+@_click.option(
+    '-i', '--i-stream', metavar='STDIN', type=_click.File(mode='r'), default='-',
     help="Input stream."
 )
-@click.option(
-    '-o', '--o-stream', metavar='FILE', type=click.File(mode='w'), default='-',
+@_click.option(
+    '-o', '--o-stream', metavar='FILE', type=_click.File(mode='w'), default='-',
     help="Output stream."
 )
-@click.option(
+@_click.option(
     '-im', '--import', 'import_modules', metavar='MODULE', multiple=True,
     help="Import additional modules."
 )
-@click.option(
-    '-nl', '--newline', metavar='CHAR', default=os.linesep,
-    help="Output newline character."
+@_click.option(
+    '-ls', '--linesep', metavar='CHAR', default=_os.linesep,
+    help="Output linesep character."
 )
-@click.option(
+@_click.option(
     '-ns', '--no-strip', is_flag=True, default=True,
     help="Don't call `line.rstrip()` before operation."
 )
-@click.option(
+@_click.option(
     '-t', '--write-true', is_flag=True,
     help="Write lines if operation evaluates as True."
 )
-@click.option(
+@_click.option(
     '-ot', '--on-true', metavar='OPERATION',
     help="Additional operation if line is True."
 )
-@click.option(
-    '-r', '--reader', metavar='NAME', default='DefaultReader',
+@_click.option(
+    '-r', '--reader', metavar='NAME', default='_DefaultReader',
     help="Load input stream into the specified reader."
 )
-@click.option(
-    '-ro', '--reader-option', metavar='KEY=VAL', multiple=True, callback=_key_val_to_dict,
+@_click.option(
+    '-ro', '--reader-option', metavar='KEY=VAL', multiple=True, callback=_str2type.click_callback_key_val_dict,
     help="Keyword arguments for reader."
 )
-@click.option(
-    '-w', '--writer', metavar='NAME', default='DefaultWriter',
+@_click.option(
+    '-w', '--writer', metavar='NAME', default='_DefaultWriter',
     help="Load output stream into specified writer."
 )
-@click.option(
-    '-wo', '--writer-option', metavar='KEY=VAL', multiple=True, callback=_key_val_to_dict,
+@_click.option(
+    '-wo', '--writer-option', metavar='KEY=VAL', multiple=True, callback=_str2type.click_callback_key_val_dict,
     help="Keyword arguments for writer."
 )
-@click.option(
+@_click.option(
     '-wm', '--write-method', metavar="NAME", default='write',
     help="Call this method instead of `writer.write()`."
 )
-@click.option(
+@_click.option(
     '-b', '--block', is_flag=True,
     help="Treat all input text as a single line."
 )
-@click.option(
-    '-v', '--variable', metavar='VAR=VAL', multiple=True, callback=_key_val_to_dict,
+@_click.option(
+    '-v', '--variable', metavar='VAR=VAL', multiple=True, callback=_str2type.click_callback_key_val_dict,
     help="Assign variables for access in operation."
 )
-@click.option(
+@_click.option(
     '-s', '--statement', metavar='CODE', multiple=True,
     help="Execute a statement after imports."
 )
-@click.argument(
+@_click.argument(
     'operation', required=True
 )
-@click.version_option(version=__version__)
-def main(i_stream, operation, o_stream, import_modules, newline, no_strip, write_true, reader, reader_option,
+@_click.version_option(version=__version__)
+def main(i_stream, operation, o_stream, import_modules, linesep, no_strip, write_true, reader, reader_option,
          writer, writer_option, write_method, on_true, block, variable, statement):
 
     """
@@ -258,18 +222,18 @@ def main(i_stream, operation, o_stream, import_modules, newline, no_strip, write
 
         # Prep reader and writer
         # Readers like csv.DictReader yield lines that aren't strings and since the default writer
-        # blindly casts everything to a string, its a lot easier if it just handles the newline character
+        # blindly casts everything to a string, its a lot easier if it just handles the linesep character
         # as well so its important to make sure it receives that option.
-        if writer == 'DefaultWriter' and 'newline' not in writer_option:
-            writer_option['newline'] = newline
+        if writer == '_DefaultWriter' and 'linesep' not in writer_option:
+            writer_option['linesep'] = linesep
         loaded_reader = eval(reader)(i_stream, **reader_option)
         loaded_writer = eval(writer)(o_stream, **writer_option)
 
         # Stream lines and process
         for output in pyin(loaded_reader, operation, strip=no_strip is True, write_true=write_true, on_true=on_true):
             getattr(loaded_writer, write_method)(output)
-        sys.exit(0)
+        _sys.exit(0)
 
     except Exception as e:
-        click.echo("ERROR: Encountered an exception: %s" % repr(e), err=True)
-        sys.exit(1)
+        _click.echo("ERROR: Encountered an exception: %s" % repr(e), err=True)
+        _sys.exit(1)
