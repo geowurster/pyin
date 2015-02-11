@@ -70,6 +70,20 @@ Get a list of variables available by default to the `operation` argument:
     $ cat LICENSE.txt | pyin line -s "print(globals().keys()); exit()"
     ['main', '_str2type', '_STR_TYPES', '__all__', '_os', '__builtins__', '__source__', '__file__', '_click', '_DefaultReader', '_sys', '__package__', '__email__', '__author__', '_PY3', 'pyin', '__name__', '__version__', '__license__', '__doc__', '_DefaultWriter']
 
+The `--reader-option key=val` values are parsed to their Python type but if the user wants to
+specify something like which JSON library to use for a `newlinejson.Reader()`
+instance then they must do that via the `--statement` option:
+
+    $ pyin \
+        -i measures.json \
+        -o ~/dec-type5.json \
+        -r newlinejson.Reader \
+        -s "newlinejson.core.JSON = ujson" \
+        -w newlinejson.Writer \
+        -im newlinejson \
+        -t "'type' in line and line['type'] is 5" \
+        -im ujson
+
 
 
 Developing
