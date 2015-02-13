@@ -15,7 +15,7 @@ import str2type as _str2type
 __all__ = ['pyin']
 
 
-__version__ = '0.3.4'
+__version__ = '0.3.5'
 __author__ = 'Kevin Wurster'
 __email__ = 'wursterk@gmail.com'
 __source__ = 'https://github.com/geowurster/pyin'
@@ -197,7 +197,7 @@ def pyin(reader, operation, strip=True, write_true=False, on_true=None):
     help="Execute a statement after imports."
 )
 @_click.option(
-    '-ss', '--subsample', metavar='N', type=_click.INT,
+    '-l', '--lines', metavar='N', type=_click.INT,
     help="Only process N lines."
 )
 @_click.argument(
@@ -205,7 +205,7 @@ def pyin(reader, operation, strip=True, write_true=False, on_true=None):
 )
 @_click.version_option(version=__version__)
 def main(i_stream, operation, o_stream, import_modules, linesep, no_strip, write_true, reader, reader_option,
-         writer, writer_option, write_method, on_true, block, variable, statement, subsample):
+         writer, writer_option, write_method, on_true, block, variable, statement, lines):
 
     """
     Perform Python operations on every line read from stdin.
@@ -214,8 +214,8 @@ def main(i_stream, operation, o_stream, import_modules, linesep, no_strip, write
     try:
 
         # Validate arguments
-        if subsample is not None and subsample < 0:
-            _click.echo("ERROR: Invalid subsample: `%s' - must be a positive int or None", err=True)
+        if lines is not None and lines < 0:
+            _click.echo("ERROR: Invalid number of lines: `%s' - must be a positive int or None", err=True)
             _sys.exit(1)
 
         # Additional imports
@@ -252,7 +252,7 @@ def main(i_stream, operation, o_stream, import_modules, linesep, no_strip, write
                                           on_true=on_true)):
 
             # Only process N lines
-            if subsample is not None and subsample is idx:
+            if lines is not None and lines is idx:
                 break
 
             getattr(loaded_writer, write_method)(output)
