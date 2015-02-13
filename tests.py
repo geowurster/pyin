@@ -142,7 +142,21 @@ class TestCli(unittest.TestCase):
         expected = print_line + os.linesep + TEST_CONTENT
         self.assertEqual(expected.strip(), result.output.strip())
 
+    def test_subsample(self):
+        result = self.runner.invoke(pyin.main, ['-i', self.tempfile.name, "line", '-ss', '2'])
+        self.assertEqual(0, result.exit_code)
+        expected = os.linesep.join(TEST_CONTENT.splitlines()[:2])
+        self.assertEqual(expected.strip(), result.output.strip())
+
+    def test_subsample_bad_value(self):
+        result = self.runner.invoke(pyin.main, ['-i', self.tempfile, "line", '-ss', '-1'])
+        self.assertNotEqual(0, result.exit_code)
+        self.assertTrue(result.output.startswith('ERROR'))
+        self.assertTrue('int' in result.output and 'positive' in result.output)
+
 
 def test_default_reader_writer():
     assert hasattr(pyin, '_DefaultReader')
     assert hasattr(pyin, '_DefaultWriter')
+    assert hasattr(pyin._DefaultReader, '__iter__')
+    assert hasattr(pyin._DefaultWriter, 'write')

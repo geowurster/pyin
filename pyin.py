@@ -112,16 +112,25 @@ def pyin(reader, operation, strip=True, write_true=False, on_true=None):
     _on_true = on_true
     del on_true
 
-    for line in reader:
+    for _idx, line in enumerate(reader):
+
+        # Strip off trailing whitespace
+        # Predominantly included to ensure that os.linesep is used as the output newline character by default
         if _strip and hasattr(line, 'rstrip'):
             line = line.rstrip()
 
         # Only yield lines that evaluate as True
         if not _write_true:
             yield eval(_operation)
+
+        # Operation evaluated as True
         elif _write_true and eval(_operation):
+
+            # Apply an additional operation if specified
             if _on_true is not None:
                 yield eval(_on_true)
+
+            # Just yield the line
             else:
                 yield line
 
@@ -187,18 +196,27 @@ def pyin(reader, operation, strip=True, write_true=False, on_true=None):
     '-s', '--statement', metavar='CODE', multiple=True,
     help="Execute a statement after imports."
 )
+@_click.option(
+    '-ss', '--subsample', metavar='N', type=_click.INT,
+    help="Only process N lines."
+)
 @_click.argument(
     'operation', required=True
 )
 @_click.version_option(version=__version__)
 def main(i_stream, operation, o_stream, import_modules, linesep, no_strip, write_true, reader, reader_option,
-         writer, writer_option, write_method, on_true, block, variable, statement):
+         writer, writer_option, write_method, on_true, block, variable, statement, subsample):
 
     """
     Perform Python operations on every line read from stdin.
     """
 
     try:
+
+        # Validate arguments
+        if subsample is not None and subsample < 0:
+            _click.echo("ERROR: Invalid subsample: `%s' - must be a positive int or None", err=True)
+            _sys.exit(1)
 
         # Additional imports
         for module in import_modules:
@@ -230,8 +248,15 @@ def main(i_stream, operation, o_stream, import_modules, linesep, no_strip, write
         loaded_writer = eval(writer)(o_stream, **writer_option)
 
         # Stream lines and process
-        for output in pyin(loaded_reader, operation, strip=no_strip is True, write_true=write_true, on_true=on_true):
+        for idx, output in enumerate(pyin(loaded_reader, operation, strip=no_strip is True, write_true=write_true,
+                                          on_true=on_true)):
+
+            # Only process N lines
+            if subsample is not None and subsample is idx:
+                break
+
             getattr(loaded_writer, write_method)(output)
+
         _sys.exit(0)
 
     except Exception as e:
