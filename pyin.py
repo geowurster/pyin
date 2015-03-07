@@ -208,7 +208,28 @@ def main(i_stream, operation, o_stream, import_modules, linesep, no_strip, write
          writer, writer_option, write_method, on_true, block, variable, statement, lines):
 
     """
-    Perform Python operations on every line read from stdin.
+    Perform simple Python operations on every line read from stdin.
+
+    Fair warning: this project utilizes `eval()` and `expr()`.  For more
+    information see: https://github.com/geowurster/pyin/blob/master/README.md
+
+    This utility is intended to eliminate the overhead associated with doing
+    weird one off text transforms and replace-all's that are often done by
+    copying output from a console window, pasting it into a text editor or
+    IPython via `%paste` where lines are then iterated over, transformed,
+    printed to the console, copied, and finally pasted somewhere else.  Instead,
+    the original lines can be streamed to `pyin` where the user can perform
+    standard Python string operations or more complicated transforms by setting
+    up and tearing down specific readers and writers.
+
+    Remove all spaces from every line:
+    $ cat ${FILE} | pyin "line.replace(' ', '')"
+
+    Extract every other word from every line:
+    $ cat ${FILE} | pyin "' '.join(line.split()[::2])
+
+    For more examples, see the cookbook.
+    https://github.com/geowurster/pyin/blob/master/Cookbook.md
     """
 
     try:
