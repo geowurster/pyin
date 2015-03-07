@@ -194,7 +194,10 @@ class _DefaultReader(object):
         return self
 
     def next(self):
-        return next(self.f)
+        if not PY3:
+            return self.f.next()
+        else:
+            return self.f.__next__()
 
     __next__ = next
 
@@ -363,7 +366,7 @@ def main(i_stream, expression, o_stream, import_modules, write_true, reader_name
         # Execute additional statements
         # expr adds __builtins__ to the scope so remove them afterwards
         for s in statement:
-            exec s in scope
+            exec(s, scope)
         if '__builtins__' in scope:
             del scope['__builtins__']
 
