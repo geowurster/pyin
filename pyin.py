@@ -1,14 +1,11 @@
 """
-Perform Python operations on every line streamed from stdin
+Perform Python expressions on every line streamed from stdin
 """
 
 
-import os as _os
 import sys as _sys
 
 import click as _click
-from derive import BaseReader as _DefaultReader
-from derive import BaseWriter as _DefaultWriter
 import str2type as _str2type
 
 
@@ -59,10 +56,10 @@ else:  # pragma no cover
     _STR_TYPES = (str, unicode)
 
 
-def pyin(reader, operation, strip=True, write_true=False, on_true=None):
+def pyin(expression, reader, write_true=False, on_true=None):
 
     """
-    Read lines from an input stream and apply the same operation to every line.
+    Read lines from an input stream and apply the same expression to every line.
 
     Examples
     --------
@@ -88,25 +85,21 @@ def pyin(reader, operation, strip=True, write_true=False, on_true=None):
     ----------
     reader : file
         File-like object that yields one line every iteration.
-    operation : string
+    expression : string
         Expression to be evaluated by `eval()`.  Lines are accessible via a
         variable named 'line'.
-    strip : bool, optional
-        Strip trailing whitespace and linesep characters.
     write_true : bool, optional
-        Only write lines if the operation evaluates as `True`.
+        Only write lines if the expression evaluates as `True`.
 
     Yields
     ------
-    str
-        The result of `eval(operation)`.
+    <object>
+        The result of `eval(expression)`.
     """
 
     # Don't let the user have access to variables they don't need access to.
-    _operation = operation
-    del operation
-    _strip = strip
-    del strip
+    _expression = expression
+    del expression
     _write_true = write_true
     del write_true
     _on_true = on_true
@@ -114,25 +107,43 @@ def pyin(reader, operation, strip=True, write_true=False, on_true=None):
 
     for _idx, line in enumerate(reader):
 
-        # Strip off trailing whitespace
-        # Predominantly included to ensure that os.linesep is used as the output newline character by default
-        if _strip and hasattr(line, 'rstrip'):
-            line = line.rstrip()
-
         # Only yield lines that evaluate as True
         if not _write_true:
-            yield eval(_operation)
+            yield eval(_expression)
 
-        # Operation evaluated as True
-        elif _write_true and eval(_operation):
+        # expression evaluated as True
+        elif _write_true and eval(_expression):
 
-            # Apply an additional operation if specified
+            # Apply an additional expression if specified
             if _on_true is not None:
                 yield eval(_on_true)
 
             # Just yield the line
             else:
                 yield line
+
+
+class _DefaultReader(object):
+
+    def __init__(self, f):
+        self.f = f
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        return next(self.f)
+
+    __next__ = next
+
+
+class _DefaultWriter(object):
+
+    def __init__(self, f):
+        self.f = f
+
+    def write(self, line):
+        self.f.write(line)
 
 
 @_click.command()
@@ -149,20 +160,12 @@ def pyin(reader, operation, strip=True, write_true=False, on_true=None):
     help="Import additional modules."
 )
 @_click.option(
-    '-ls', '--linesep', metavar='CHAR', default=_os.linesep,
-    help="Output linesep character."
-)
-@_click.option(
-    '-ns', '--no-strip', is_flag=True, default=True,
-    help="Don't call `line.rstrip()` before operation."
-)
-@_click.option(
     '-t', '--write-true', is_flag=True,
-    help="Write lines if operation evaluates as True."
+    help="Write lines if expression evaluates as True."
 )
 @_click.option(
-    '-ot', '--on-true', metavar='OPERATION',
-    help="Additional operation if line is True."
+    '-ot', '--on-true', metavar='expression',
+    help="Additional expression if line is True."
 )
 @_click.option(
     '-r', '--reader', metavar='NAME', default='_DefaultReader',
@@ -190,7 +193,7 @@ def pyin(reader, operation, strip=True, write_true=False, on_true=None):
 )
 @_click.option(
     '-v', '--variable', metavar='VAR=VAL', multiple=True, callback=_str2type.click_callback_key_val_dict,
-    help="Assign variables for access in operation."
+    help="Assign variables for access in expression."
 )
 @_click.option(
     '-s', '--statement', metavar='CODE', multiple=True,
@@ -201,14 +204,14 @@ def pyin(reader, operation, strip=True, write_true=False, on_true=None):
     help="Only process N lines."
 )
 @_click.argument(
-    'operation', required=True
+    'expression', required=True
 )
 @_click.version_option(version=__version__)
-def main(i_stream, operation, o_stream, import_modules, linesep, no_strip, write_true, reader, reader_option,
+def main(i_stream, expression, o_stream, import_modules, write_true, reader, reader_option,
          writer, writer_option, write_method, on_true, block, variable, statement, lines):
 
     """
-    Perform simple Python operations on every line read from stdin.
+    Perform simple Python expressions on every line read from stdin.
 
     Fair warning: this project utilizes `eval()` and `expr()`.  For more
     information see: https://github.com/geowurster/pyin/blob/master/README.md
@@ -219,7 +222,7 @@ def main(i_stream, operation, o_stream, import_modules, linesep, no_strip, write
     IPython via `%paste` where lines are then iterated over, transformed,
     printed to the console, copied, and finally pasted somewhere else.  Instead,
     the original lines can be streamed to `pyin` where the user can perform
-    standard Python string operations or more complicated transforms by setting
+    standard Python string expressions or more complicated transforms by setting
     up and tearing down specific readers and writers.
 
     Remove all spaces from every line:
@@ -255,28 +258,23 @@ def main(i_stream, operation, o_stream, import_modules, linesep, no_strip, write
         if on_true is not None:
             write_true = True
 
-        # Prepare block mode
+        # Prepare block mode, where all lines are processed together in a single block of text
         if block:
             i_stream = iter([i_stream.read()])
 
         # Prep reader and writer
-        # Readers like csv.DictReader yield lines that aren't strings and since the default writer
-        # blindly casts everything to a string, its a lot easier if it just handles the linesep character
-        # as well so its important to make sure it receives that option.
-        if writer == '_DefaultWriter' and 'linesep' not in writer_option:
-            writer_option['linesep'] = linesep
         loaded_reader = eval(reader)(i_stream, **reader_option)
         loaded_writer = eval(writer)(o_stream, **writer_option)
 
         # Stream lines and process
-        for idx, output in enumerate(pyin(loaded_reader, operation, strip=no_strip is True, write_true=write_true,
-                                          on_true=on_true)):
+        _write_method = getattr(loaded_writer, write_method)
+        for idx, output in enumerate(pyin(expression, loaded_reader, write_true=write_true, on_true=on_true)):
 
             # Only process N lines
             if lines is not None and lines is idx:
                 break
 
-            getattr(loaded_writer, write_method)(output)
+            _write_method(output)
 
         _sys.exit(0)
 
