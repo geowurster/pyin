@@ -126,7 +126,27 @@ def pyin(expression, reader, write_true=False, on_true=None):
 class _DefaultReader(object):
 
     def __init__(self, f):
-        self.f = f
+
+        """
+        Default reader - acts like `file` but accepts an already open file-like
+        object or any iterable object.
+
+        Attributes
+        ----------
+        f : file or iterable
+            Handle to input iterable
+
+        Parameters
+        ----------
+        f : file or iterable
+            Open file-like object for reading.
+        """
+
+        self._f = f
+
+    @property
+    def f(self):
+        return self._f
 
     def __iter__(self):
         return self
@@ -140,10 +160,32 @@ class _DefaultReader(object):
 class _DefaultWriter(object):
 
     def __init__(self, f):
-        self.f = f
+
+        """
+        Default writer - acts like file but accepts an already open file-like
+        object.  Blindly casts all written lines to a string.  Does not add
+        a newline character.
+
+        Attributes
+        ----------
+        f : file
+            Handle to open file-like object for writing.
+        """
+
+        self._f = f
+
+    @property
+    def f(self):
+        return self._f
 
     def write(self, line):
-        self.f.write(line)
+
+        """
+        Blindly casts input lines to a string.  Does not add or modify newline
+        characters.
+        """
+
+        self.f.write(str(line))
 
 
 @_click.command()

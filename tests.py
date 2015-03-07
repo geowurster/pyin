@@ -172,8 +172,33 @@ class TestCli(unittest.TestCase):
         self.assertTrue('int' in result.output and 'positive' in result.output)
 
 
-def test_default_reader_writer():
-    assert hasattr(pyin, '_DefaultReader')
-    assert hasattr(pyin, '_DefaultWriter')
-    assert hasattr(pyin._DefaultReader, '__iter__')
-    assert hasattr(pyin._DefaultWriter, 'write')
+class TestDefaultReader(unittest.TestCase):
+
+    def setUp(self):
+        self.tempfile = tempfile.NamedTemporaryFile(mode='r+')
+        self.tempfile.write(TEST_CONTENT)
+        self.tempfile.seek(0)
+
+    def tearDown(self):
+        self.tempfile.close()
+
+    def test_iter(self):
+        for expected, actual in zip(pyin._DefaultReader(self.tempfile), StringIO(TEST_CONTENT)):
+            self.assertEqual(expected, actual)
+
+
+class TesetDefaultWriter(unittest.TestCase):
+
+    def setUp(self):
+        self.tempfile = tempfile.NamedTemporaryFile(mode='r+')
+
+    def tearDown(self):
+        self.tempfile.close()
+
+    def test_write(self):
+        writer = pyin._DefaultWriter(self.tempfile)
+        for line in TEST_CONTENT.splitlines():
+            writer.write(line + os.linesep)
+        self.tempfile.seek(0)
+        for expected, actual in zip(TEST_CONTENT.splitlines(), self.tempfile):
+            self.assertEqual(expected + os.linesep, actual)
