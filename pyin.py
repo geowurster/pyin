@@ -3,10 +3,17 @@ Perform Python expressions on every line streamed from stdin
 """
 
 
-import sys as _sys
+import sys
+try:  # pragma no cover
+    from io import StringIO
+except ImportError:  # pragma no cover
+    try:
+        from cStringIO import StringIO
+    except ImportError:
+        from StringIO import StringIO
 
-import click as _click
-import str2type as _str2type
+import click
+import str2type
 
 
 __all__ = ['pyin']
@@ -49,14 +56,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 # Python 2/3 compatibility
-_PY3 = _sys.version_info[0] == 3
-if _PY3:  # pragma no cover
-    _STR_TYPES = (str)
+PY3 = sys.version_info[0] == 3
+if PY3:  # pragma no cover
+    STR_TYPES = (str)
 else:  # pragma no cover
-    _STR_TYPES = (str, unicode)
+    STR_TYPES = (str, unicode)
 
 
-def pyin(expression, reader, write_true=False, on_true=None):
+def pyin(expression, reader, scope=None, write_true=False, on_true=None):
 
     """
     Read lines from an input stream and apply the same expression to every line.
@@ -91,36 +98,71 @@ def pyin(expression, reader, write_true=False, on_true=None):
     write_true : bool, optional
         Only write lines if the expression evaluates as `True`.
 
+    Raises
+    ------
+    AttributeError
+        If 'line' appears in scope.
+
     Yields
     ------
     <object>
         The result of `eval(expression)`.
     """
 
-    # Don't let the user have access to variables they don't need access to.
-    _expression = expression
-    del expression
-    _write_true = write_true
-    del write_true
-    _on_true = on_true
-    del on_true
+    if scope is None:
+        scope = {}
+
+    if 'line' in scope:
+        raise NameError("Variable 'line' cannot be in scope - will be overwritten by local variable.")
 
     for _idx, line in enumerate(reader):
 
+        scope['line'] = line
+
         # Only yield lines that evaluate as True
-        if not _write_true:
-            yield eval(_expression)
+        if not write_true:
+            yield eval(expression, scope)
 
         # expression evaluated as True
-        elif _write_true and eval(_expression):
+        elif write_true and eval(expression, scope):
 
             # Apply an additional expression if specified
-            if _on_true is not None:
-                yield eval(_on_true)
+            if on_true is not None:
+                yield eval(on_true, scope)
 
             # Just yield the line
             else:
                 yield line
+
+
+def _parse_scope(scope, string_lookup):
+
+    """
+    Extract objects from an object like `globals()` given a string containing
+    a dotted lookup.
+
+    Example:
+
+        >>> scope = {
+        ...     'csv': __import__('csv')
+        ... }
+        >>> string_lookup = 'csv.DictReader'
+        >>> obj = _parse_scope(scope, string_lookup)
+        >>> obj
+        <class csv.DictReader at 0x10aedd120>
+
+    Parameters
+    ----------
+    scope : dict
+        A dictionary like `globals()`
+    string_lookup : str
+        Dotted string lookup referencing an object in `scope`.
+    """
+
+    obj = scope[string_lookup.split('.')[0]]
+    for item in string_lookup.split('.')[1:]:
+        obj = getattr(obj, item)
+    return obj
 
 
 class _DefaultReader(object):
@@ -188,69 +230,69 @@ class _DefaultWriter(object):
         self.f.write(str(line))
 
 
-@_click.command()
-@_click.option(
-    '-i', '--i-stream', metavar='STDIN', type=_click.File(mode='r'), default='-',
+@click.command()
+@click.option(
+    '-i', '--i-stream', metavar='STDIN', type=click.File(mode='r'), default='-',
     help="Input stream."
 )
-@_click.option(
-    '-o', '--o-stream', metavar='FILE', type=_click.File(mode='w'), default='-',
+@click.option(
+    '-o', '--o-stream', metavar='FILE', type=click.File(mode='w'), default='-',
     help="Output stream."
 )
-@_click.option(
+@click.option(
     '-im', '--import', 'import_modules', metavar='MODULE', multiple=True,
     help="Import additional modules."
 )
-@_click.option(
+@click.option(
     '-t', '--write-true', is_flag=True,
     help="Write lines if expression evaluates as True."
 )
-@_click.option(
+@click.option(
     '-ot', '--on-true', metavar='expression',
     help="Additional expression if line is True."
 )
-@_click.option(
-    '-r', '--reader', metavar='NAME', default='_DefaultReader',
+@click.option(
+    '-r', '--reader', 'reader_name', metavar='NAME',
     help="Load input stream into the specified reader."
 )
-@_click.option(
-    '-ro', '--reader-option', metavar='KEY=VAL', multiple=True, callback=_str2type.click_callback_key_val_dict,
+@click.option(
+    '-ro', '--reader-option', metavar='KEY=VAL', multiple=True, callback=str2type.click_callback_key_val_dict,
     help="Keyword arguments for reader."
 )
-@_click.option(
-    '-w', '--writer', metavar='NAME', default='_DefaultWriter',
+@click.option(
+    '-w', '--writer', 'writer_name', metavar='NAME',
     help="Load output stream into specified writer."
 )
-@_click.option(
-    '-wo', '--writer-option', metavar='KEY=VAL', multiple=True, callback=_str2type.click_callback_key_val_dict,
+@click.option(
+    '-wo', '--writer-option', metavar='KEY=VAL', multiple=True, callback=str2type.click_callback_key_val_dict,
     help="Keyword arguments for writer."
 )
-@_click.option(
+@click.option(
     '-wm', '--write-method', metavar="NAME", default='write',
     help="Call this method instead of `writer.write()`."
 )
-@_click.option(
+@click.option(
     '-b', '--block', is_flag=True,
     help="Treat all input text as a single line."
 )
-@_click.option(
-    '-v', '--variable', metavar='VAR=VAL', multiple=True, callback=_str2type.click_callback_key_val_dict,
+@click.option(
+    '-v', '--variable', metavar='VAR=VAL', multiple=True, callback=str2type.click_callback_key_val_dict,
     help="Assign variables for access in expression."
 )
-@_click.option(
+@click.option(
     '-s', '--statement', metavar='CODE', multiple=True,
     help="Execute a statement after imports."
 )
-@_click.option(
-    '-l', '--lines', metavar='N', type=_click.INT,
+@click.option(
+    '-l', '--lines', metavar='N', type=click.INT,
     help="Only process N lines."
 )
-@_click.argument(
+@click.argument(
     'expression', required=True
 )
-@_click.version_option(version=__version__)
-def main(i_stream, expression, o_stream, import_modules, write_true, reader, reader_option,
-         writer, writer_option, write_method, on_true, block, variable, statement, lines):
+@click.version_option(version=__version__)
+def main(i_stream, expression, o_stream, import_modules, write_true, reader_name, reader_option,
+         writer_name, writer_option, write_method, on_true, block, variable, statement, lines):
 
     """
     Perform simple Python expressions on every line read from stdin.
@@ -277,24 +319,28 @@ def main(i_stream, expression, o_stream, import_modules, write_true, reader, rea
     https://github.com/geowurster/pyin/blob/master/Cookbook.md
     """
 
+    # This is the scope that is used for all eval and exec calls
+    # All imported modules and user assigned variables are stored in here
+    scope = {}
+
     try:
 
         # Validate arguments
         if lines is not None and lines < 0:
-            _click.echo("ERROR: Invalid number of lines: `%s' - must be a positive int or None", err=True)
-            _sys.exit(1)
+            click.echo("ERROR: Invalid number of lines: `%s' - must be a positive int or None", err=True)
+            sys.exit(1)
 
-        # Additional imports
+        # Add additional imports to the operating scope
         for module in import_modules:
-            globals()[module] = __import__(module)
-
-        # Execute additional statements
-        for s in statement:
-            exec(s)
+            if '=' in module:
+                _new_name, _module_string = module.split('=')
+                scope[_new_name] = __import__(_module_string, fromlist=[_module_string.split('.')[0]])
+            else:
+                scope[module] = __import__(module)
 
         # Assign additional variables
         for var, val in variable.items():
-            globals()[var] = val
+            scope[var] = val
 
         # Allow user to specify -ot without -t and still enable -t
         if on_true is not None:
@@ -304,22 +350,35 @@ def main(i_stream, expression, o_stream, import_modules, write_true, reader, rea
         if block:
             i_stream = iter([i_stream.read()])
 
-        # Prep reader and writer
-        loaded_reader = eval(reader)(i_stream, **reader_option)
-        loaded_writer = eval(writer)(o_stream, **writer_option)
+        # Prep reader and writer - keep _DefaultReader/Writer out of the scope by calling directly
+        if reader_name is None:
+            scope['reader'] = _DefaultReader(i_stream)
+        else:
+            scope['reader'] = _parse_scope(scope, reader_name)(i_stream, **reader_option)
+        if writer_name is None:
+            scope['writer'] = _DefaultWriter(o_stream)
+        else:
+            scope['writer'] = _parse_scope(scope, writer_name)(o_stream, **writer_option)
+
+        # Execute additional statements
+        # expr adds __builtins__ to the scope so remove them afterwards
+        for s in statement:
+            exec s in scope
+        if '__builtins__' in scope:
+            del scope['__builtins__']
 
         # Stream lines and process
-        _write_method = getattr(loaded_writer, write_method)
-        for idx, output in enumerate(pyin(expression, loaded_reader, write_true=write_true, on_true=on_true)):
+        write_method_obj = getattr(scope['writer'], write_method)
+        for idx, output in enumerate(pyin(expression, scope['reader'], scope=scope, write_true=write_true, on_true=on_true)):
 
             # Only process N lines
             if lines is not None and lines is idx:
                 break
 
-            _write_method(output)
+            write_method_obj(output)
 
-        _sys.exit(0)
+        sys.exit(0)
 
     except Exception as e:
-        _click.echo("ERROR: Encountered an exception: %s" % repr(e), err=True)
-        _sys.exit(1)
+        click.echo("ERROR: Encountered an exception: %s" % repr(e), err=True)
+        sys.exit(1)

@@ -60,6 +60,19 @@ class TestPyin(unittest.TestCase):
         for expected, actual in zip(expected_lines, pyin.pyin("'l2' in line", self.tempfile, write_true=True)):
             self.assertEqual(expected + os.linesep, actual)
 
+    def test_line_in_scope_raise_exception(self):
+        # When line is provided in the scope it will be immediately overwritten by the local variable line
+        # so prevent this from happening by raising an exception
+        with self.assertRaises(NameError):
+            for item in pyin.pyin("'line'", range(10), scope={'line': 'asdf'}):
+                pass
+
+    def test_reach_outside_scope_raise_exception(self):
+        # An exception will be raised if the user attempts to access something that is not in the scope
+        with self.assertRaises(NameError):
+            for item in pyin.pyin("os", range(5)):
+                pass
+
 
 class TestCli(unittest.TestCase):
 
@@ -171,6 +184,13 @@ class TestCli(unittest.TestCase):
         self.assertTrue(result.output.startswith('ERROR'))
         self.assertTrue('int' in result.output and 'positive' in result.output)
 
+    def test_import_module_as(self):
+        # The syntax `import something as other` is not directly supported but can be achieved with
+        # `-im other=something`
+        result = self.runner.invoke(pyin.main, ['-i', self.tempfile, "_os.isdir", '-im', '_os=os.path'])
+        expected = str(os.path.isdir) * len([line for line in TEST_CONTENT.splitlines()])
+        self.assertEqual(expected, result.output)
+
 
 class TestDefaultReader(unittest.TestCase):
 
@@ -202,3 +222,8 @@ class TesetDefaultWriter(unittest.TestCase):
         self.tempfile.seek(0)
         for expected, actual in zip(TEST_CONTENT.splitlines(), self.tempfile):
             self.assertEqual(expected + os.linesep, actual)
+
+
+def test_parse_scope():
+    scope = {'os': os}
+    assert pyin._parse_scope(scope, 'os.path.isdir') == os.path.isdir
