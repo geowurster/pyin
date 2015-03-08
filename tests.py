@@ -191,6 +191,38 @@ class TestCli(unittest.TestCase):
         expected = str(os.path.isdir) * len([line for line in TEST_CONTENT.splitlines()])
         self.assertEqual(expected, result.output)
 
+    def test_skip_lines(self):
+        # Allow user to skip some number of input lines
+        skip_lines = 2
+        result = self.runner.invoke(pyin.main, ['-i', self.tempfile, "line", '-sl', str(skip_lines)])
+        expected = os.linesep.join([line for line in TEST_CONTENT.splitlines()][skip_lines:])
+        self.assertEqual(expected, result.output)
+
+    def test_only_process_subset(self):
+        # Allow the user to process the first N lines
+        subset = 2
+        result = self.runner.invoke(pyin.main, ['-i', self.tempfile, "line", '-l', str(subset)])
+        expected = os.linesep.join([line for line in TEST_CONTENT.splitlines()][:subset]) + os.linesep
+        self.assertEqual(expected, result.output)
+
+    def test_skip_lines_and_process_subset(self):
+        # Allow the user to both skip N input lines and then only process the next N lines
+        skip_lines = 2
+        subset = 2
+        result = self.runner.invoke(
+            pyin.main, ['-i', self.tempfile, "line", '-sl', str(skip_lines), '-l', str(subset)])
+        expected = os.linesep.join(
+            [line for line in TEST_CONTENT.splitlines()][skip_lines:skip_lines + subset]
+        ) + os.linesep
+        self.assertEqual(expected, result.output)
+
+    def test_invalid_skip_lines(self):
+        # Make sure an error is thrown if the user specifies an invalid number of skip lines
+        result = self.runner.invoke(pyin.main, ['-i', self.tempfile, "line", "-sl", "-1"])
+        self.assertNotEqual(0, result.exit_code)
+        self.assertTrue(result.output.startswith('ERROR:'))
+        self.assertTrue('int' in result.output and 'positive' in result.output)
+
 
 class TestDefaultReader(unittest.TestCase):
 

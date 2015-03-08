@@ -235,27 +235,29 @@ class _DefaultWriter(object):
 
 @click.command()
 @click.option(
-    '-i', '--i-stream', metavar='STDIN', type=click.File(mode='r'), default='-',
-    help="Input stream."
+    '-i', '--i-stream', metavar='PATH', type=click.File(mode='r'), default='-',
+    help="Input file - if not supplied defaults to stdin."
 )
 @click.option(
-    '-o', '--o-stream', metavar='FILE', type=click.File(mode='w'), default='-',
-    help="Output stream."
+    '-o', '--o-stream', metavar='PATH', type=click.File(mode='w'), default='-',
+    help="Output file - if not supplied defaults to stdout."
 )
 @click.option(
     '-im', '--import', 'import_modules', metavar='MODULE', multiple=True,
-    help="Import additional modules."
+    help="Import additional modules.  Use `other=mod.something` for `from mod"
+         " import something as other` syntax."
 )
 @click.option(
     '-t', '--write-true', is_flag=True,
     help="Write lines if expression evaluates as True."
 )
 @click.option(
-    '-ot', '--on-true', metavar='expression',
-    help="Additional expression if line is True."
+    '-ot', '--on-true', metavar='EXPRESSION',
+    help="Additional expression to apply to lines that evaluate as `True`."
+         "  Automatically enables `--true` flag."
 )
 @click.option(
-    '-r', '--reader', 'reader_name', metavar='NAME',
+    '-r', '--reader', 'reader_name', metavar='MODULE.OBJECT',
     help="Load input stream into the specified reader."
 )
 @click.option(
@@ -263,7 +265,7 @@ class _DefaultWriter(object):
     help="Keyword arguments for reader."
 )
 @click.option(
-    '-w', '--writer', 'writer_name', metavar='NAME',
+    '-w', '--writer', 'writer_name', metavar='MODULE.OBJECT',
     help="Load output stream into specified writer."
 )
 @click.option(
@@ -280,22 +282,26 @@ class _DefaultWriter(object):
 )
 @click.option(
     '-v', '--variable', metavar='VAR=VAL', multiple=True, callback=str2type.click_callback_key_val_dict,
-    help="Assign variables for access in expression."
+    help="Assign additional variables for access in expression."
 )
 @click.option(
     '-s', '--statement', metavar='CODE', multiple=True,
-    help="Execute a statement after imports."
+    help="Execute a statement immediately before processing input data."
 )
 @click.option(
     '-l', '--lines', metavar='N', type=click.INT,
     help="Only process N lines."
+)
+@click.option(
+    '-sl', '--skip-lines', metavar='N', type=click.INT,
+    help="Skip the first N lines."
 )
 @click.argument(
     'expression', required=True
 )
 @click.version_option(version=__version__)
 def main(i_stream, expression, o_stream, import_modules, write_true, reader_name, reader_option,
-         writer_name, writer_option, write_method, on_true, block, variable, statement, lines):
+         writer_name, writer_option, write_method, on_true, block, variable, statement, lines, skip_lines):
 
     """
     Perform simple Python expressions on every line read from stdin.
@@ -330,7 +336,10 @@ def main(i_stream, expression, o_stream, import_modules, write_true, reader_name
 
         # Validate arguments
         if lines is not None and lines < 0:
-            click.echo("ERROR: Invalid number of lines: `%s' - must be a positive int or None", err=True)
+            click.echo("ERROR: Invalid number of lines: `%s' - must be a positive int or None.", err=True)
+            sys.exit(1)
+        if skip_lines is not None and skip_lines < 0:
+            click.echo("ERROR: Invalid number of skip lines: `%s' - must be a positive int or None.")
             sys.exit(1)
 
         # Add additional imports to the operating scope
@@ -372,14 +381,18 @@ def main(i_stream, expression, o_stream, import_modules, write_true, reader_name
 
         # Stream lines and process
         write_method_obj = getattr(scope['writer'], write_method)
+        processed_lines = 0
         for idx, output in enumerate(
                 pyin(expression, scope['reader'], scope=scope, write_true=write_true, on_true=on_true)):
 
-            # Only process N lines
-            if lines is not None and lines is idx:
+            # Handle skipping input lines and only processing a subsample
+            if skip_lines is not None and idx + 1 <= skip_lines:
+                continue
+            elif lines is not None and lines is processed_lines:
                 break
 
             write_method_obj(output)
+            processed_lines += 1
 
         sys.exit(0)
 

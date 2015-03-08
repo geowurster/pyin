@@ -10,11 +10,20 @@ examples can be found below with both the Python code necessary to complete the
 task and the equivalent ``pyin`` command.
 
 Things to remember:
-- ``pyin`` uses ``eval()`` and ``exec()``.  See the ``README`` for more information.
-- The ``-i ${INFILE}`` option can be replaced with ``cat ${INFILE} | pyin``.
-- ``pbcopy`` and ``pbpaste``on a Mac can be pretty powerful when combined with pipe.
+- ``pyin`` uses ``eval()`` and ``exec()``.  See the `README <https://github.com/geowurster/pyin/blob/master/README.rst>`__ for more information.
+- Data can be piped in via ``stdin`` instead of using the ``-i`` option.
 - The examples below may not work if blindly pasted into a console or interpreter.
 - You really shouldn't use ``pyin`` for some of this stuff...
+
+
+Copy/Paste on a Mac
+~~~~~~~~~~~~~~~~~~~
+
+First copy something to the clipboard.
+
+.. code-block:: console
+
+    $ pbpaste | pyin "line.upper()" | pbcopy
 
 
 Extract every other word
@@ -31,7 +40,8 @@ Extract every other word
 
 .. code-block:: console
 
-    $ pyin -i ${INFILE} "' '.join(line.split()[::2])"
+    $ pyin -i ${INFILE} \
+        "' '.join(line.split()[::2])"
 
 
 Fix incorrect linesep for platform
@@ -46,7 +56,9 @@ Fix incorrect linesep for platform
 
 .. code-block:: console
 
-    $ pyin -i ${INFILE} --block "line.replace(${BAD_LINESEP}, os.linesep)"
+    $ pyin -i ${INFILE} \
+        --block \
+        "line.replace(${BAD_LINESEP}, os.linesep)"
 
 
 Change linesep character
@@ -63,7 +75,9 @@ Change linesep character
 
 .. code-block:: console
 
-    $ pyin -i ${INFILE} --import os "line.strip(os.linesep, ${NEW_LINESEP})"
+    $ pyin -i ${INFILE} \
+        --import os \
+        "line.strip(os.linesep, ${NEW_LINESEP})"
 
 
 Extract columns from a CSV
@@ -86,12 +100,12 @@ Extract columns from a CSV
     $ FIELDNAMES='["field2","field3"]'
     $ pyin -i ${INFILE} \
         --import csv \
-        --reader csv.DictReader
-        --writer csv.DictWriter
-        --write-method writerow
-        --reader-option fieldnames=${FIELDNAMES}
-        --writer-option fieldnames=${FIELDNAMES}
-        --writer-option extrasaction=ignore
+        --reader csv.DictReader \
+        --writer csv.DictWriter \
+        --write-method writerow \
+        --reader-option fieldnames=${FIELDNAMES} \
+        --writer-option fieldnames=${FIELDNAMES} \
+        --writer-option extrasaction=ignore \
         line
 
 
@@ -110,9 +124,9 @@ Convert a CSV to newline delimited JSON and extract a field subset
 .. code-block:: console
 
     $ pyin -i ${INFILE} \
-        --import csv
-        --import json
-        --reader csv.DictReader
+        --import csv \
+        --import json \
+        --reader csv.DictReader \
         "json.dumps(json.dumps({k: v for k,v in line.items() if k in ['field2', 'field3']})"
 
 
@@ -128,7 +142,9 @@ Only write lines containing a specific word
 
 .. code-block:: console
 
-    $ pyin -i ${INFILE} --write-true "'word' in line"
+    $ pyin -i ${INFILE} -o ${OUTFILE} \
+        --write-true \
+        "'word' in line"
 
 
 Only write lines containing a specific word but also capitalize them
@@ -143,28 +159,32 @@ Only write lines containing a specific word but also capitalize them
 
 .. code-block:: console
 
-    $ pyin -i ${INFILE} --write-true "'word' in line" --on-true "line.upper()"
+    $ pyin -i ${INFILE} -o ${OUTFILE} \
+        --write-true \
+        --on-true "line.upper()" \
+        "'word' in line"
 
 
-Change Newline Delimited JSON Field Names
------------------------------------------
+Extract newline JSON field subset and rename fields
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Example fieldmap:
 
-```json
-{
-  "field1": "FIELD1",
-  "field2": "something-else"
-}
-```
+.. code-block:: python
 
-Command:
+    import newlinejson
 
-``` console
-$ pyin -i newline.json \
-      -im module.FIELD_MAP \
-      -im newlinejson \
-      -r newlinejson.Reader \
-      -w newlinejson.Writer \
-       "{module.FIELD_MAP[key]: val for key, val in line.iteritems() if key in module.FIELD_MAP}"
-```
+    from <module> import FIELD_MAP
+
+    with open(infile) as i_f, open(outfile, 'w') as o_f:
+        writer = newlinejson.Writer(o_f)
+        for line in newlinejson.Reader(i_f):
+            writer.write({FIELD_MAP[f]: line[f] for f in FIELD_MAP})
+
+.. code-block:: console
+
+    $ pyin -i ${INFILE} -o ${OUTFILE} \
+          --import field_map=<module>.FIELD_MAP \
+          --import newlinejson \
+          --reader newlinejson.Reader \
+          --writer newlinejson.Writer \
+           "{field_map[key]: val for key, val in line.items() if key in field_map}"
