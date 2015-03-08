@@ -14,7 +14,11 @@ It's like sed, but Python!
 Examples
 ========
 
+See the `Cookbook <https://github.com/geowurster/pyin/blob/master/Cookbook.rst>` for more examples.
+
 Change newline character in a CSV.
+
+.. code-block:: console
 
     $ more sample-data/csv-with-header.csv | pyin "line.replace('\n', '\r\n')" > output.csv
 
