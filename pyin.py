@@ -194,9 +194,9 @@ class _DefaultReader(object):
         return self
 
     def next(self):
-        if not PY3:
+        if not PY3:  # pragma no cover
             return self.f.next()
-        else:
+        else:  # pragma no cover
             return self.f.__next__()
 
     __next__ = next
