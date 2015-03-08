@@ -14,7 +14,7 @@ It's like sed, but Python!
 Examples
 ========
 
-See the `Cookbook <https://github.com/geowurster/pyin/blob/master/Cookbook.rst>` for more examples.
+See the `Cookbook <https://github.com/geowurster/pyin/blob/master/Cookbook.rst>`__ for more examples.
 
 Change newline character in a CSV.
 
