@@ -372,7 +372,8 @@ def main(i_stream, expression, o_stream, import_modules, write_true, reader_name
 
         # Stream lines and process
         write_method_obj = getattr(scope['writer'], write_method)
-        for idx, output in enumerate(pyin(expression, scope['reader'], scope=scope, write_true=write_true, on_true=on_true)):
+        for idx, output in enumerate(
+                pyin(expression, scope['reader'], scope=scope, write_true=write_true, on_true=on_true)):
 
             # Only process N lines
             if lines is not None and lines is idx:
