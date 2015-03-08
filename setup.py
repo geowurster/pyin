@@ -9,7 +9,7 @@ Setup script for pyin
 import setuptools
 
 
-with open('README.md') as f:
+with open('README.rst') as f:
     readme_content = f.read().strip()
 
 
