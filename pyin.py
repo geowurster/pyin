@@ -81,22 +81,11 @@ Observing the following overly cautious rules will help.
        behind the scenes.
     6. This may not be the utility for you.  Use only if confident.
 
-Examples below, but if the environment variables specified at the very bottom
-are unset then keep in mind that the rules will be printed twice but the text
-will only be processed once.
-
-    # Print input lines without alteration
-    $ pyin --rules | pyin "line"
-
-    # Only print the rules
-    $ pyin --rules | pyin \\
-        --write-true \\
-        "line.strip() != '' and line.strip()[0].isdigit()" \\
-        --on-true "line"
+See GitHub for source code, readme, and examples: {github_url}
 
 In order to suppress this message and eliminate the {wait_time} wait, set an environment
 variable called `PYIN_NO_WARN` equal to `I_read_the_rules_and_accept_the_consequences`.
-""".format(wait_time=_WAIT_TIME)
+""".format(wait_time=_WAIT_TIME, github_url=__source__)
 
 
 # Python 2/3 compatibility
