@@ -5,6 +5,7 @@ Unittests for pyin
 
 from __future__ import unicode_literals
 
+import datetime
 import os
 import tempfile
 import unittest
@@ -16,6 +17,9 @@ except ImportError:
 from click.testing import CliRunner
 
 import pyin
+
+
+os.environ[pyin._NO_WARN_ENV_KEY] = pyin._NO_WARN_ENV_VAL
 
 
 TEST_CONTENT = '''"field1","field2","field3"
@@ -222,6 +226,23 @@ class TestCli(unittest.TestCase):
         self.assertNotEqual(0, result.exit_code)
         self.assertTrue(result.output.startswith('ERROR:'))
         self.assertTrue('int' in result.output and 'positive' in result.output)
+
+    def test_rules_flag(self):
+        # Make sure this flag only prints the rules and exits
+        result = self.runner.invoke(pyin.main, ['--rules'])
+        self.assertEqual(pyin.RULES.strip(), result.output.strip())
+
+    def test_print_warning(self):
+        # Make sure the warning is printed and there's a pause before executing
+        if pyin._NO_WARN_ENV_KEY in os.environ:
+            del os.environ[pyin._NO_WARN_ENV_KEY]
+        pyin._WAIT_TIME = 3
+        start_time = datetime.datetime.utcnow()
+        result = self.runner.invoke(pyin.main, ['-i', self.tempfile, "line"])
+        end_time = datetime.datetime.utcnow()
+        self.assertTrue(result.output.startswith(pyin.RULES))
+        self.assertTrue((end_time - start_time).total_seconds() - pyin._WAIT_TIME < 0.5)
+        os.environ[pyin._NO_WARN_ENV_KEY] = pyin._NO_WARN_ENV_VAL
 
 
 class TestDefaultReader(unittest.TestCase):

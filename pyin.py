@@ -3,6 +3,7 @@ Perform Python expressions on every line streamed from stdin
 """
 
 
+import os
 import sys
 try:  # pragma no cover
     from io import StringIO
@@ -11,6 +12,7 @@ except ImportError:  # pragma no cover
         from cStringIO import StringIO
     except ImportError:
         from StringIO import StringIO
+import time
 
 import click
 import str2type
@@ -53,6 +55,48 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 '''
+
+_WAIT_TIME = 30
+_NO_WARN_ENV_KEY = "PYIN_NO_WARN"
+_NO_WARN_ENV_VAL = "I_read_the_rules_and_accept_the_consequences"
+
+
+RULES = """
+This utility uses `exec()` and `eval()`, which can be dangerous when misused.
+Observing the following overly cautious rules will help.
+
+    1. Don't call `eval()` in an expression - this will hopefully be locked out
+       in a future release.
+    2. Use at your own risk.
+    3. Don't use this in a production environment.  The intended use is for
+       filtering and transforming a relatively small number of input lines that
+       would normally take a few lines of boilerplate Python code, most of which
+       gets re-written every time.
+    4. Before developing a more complicated expression use `"line"` and only
+       process a subsample.  This expression passes text through without any
+       alterations to make sure the input is as expected.
+    5. Like most of Python this utility leaves the locks off the door in favor
+       of flexibility and more readable code.  The source code is short, well
+       commented, and is worth reading to better understand what is happening
+       behind the scenes.
+    6. This may not be the utility for you.  Use only if confident.
+
+Examples below, but if the environment variables specified at the very bottom
+are unset then keep in mind that the rules will be printed twice but the text
+will only be processed once.
+
+    # Print input lines without alteration
+    $ pyin --rules | pyin "line"
+
+    # Only print the rules
+    $ pyin --rules | pyin \\
+        --write-true \\
+        "line.strip() != '' and line.strip()[0].isdigit()" \\
+        --on-true "line"
+
+In order to suppress this message and eliminate the {wait_time} wait, set an environment
+variable called `PYIN_NO_WARN` equal to `I_read_the_rules_and_accept_the_consequences`.
+""".format(wait_time=_WAIT_TIME)
 
 
 # Python 2/3 compatibility
@@ -135,6 +179,18 @@ def pyin(expression, reader, scope=None, write_true=False, on_true=None):
                 yield line
 
 
+def _print_rules_callback(ctx, param, value):
+
+    """
+    Click callback for `--rules` - immediately prints the rules and exits.
+    """
+
+    if not value or ctx.resilient_parsing:
+        return None
+    click.echo(RULES)
+    ctx.exit(0)
+
+
 def _parse_scope(scope, string_lookup):
 
     """
@@ -148,7 +204,6 @@ def _parse_scope(scope, string_lookup):
         ... }
         >>> string_lookup = 'csv.DictReader'
         >>> obj = _parse_scope(scope, string_lookup)
-        >>> obj
         <class csv.DictReader at 0x10aedd120>
 
     Parameters
@@ -296,6 +351,10 @@ class _DefaultWriter(object):
     '-sl', '--skip-lines', metavar='N', type=click.INT,
     help="Skip the first N lines."
 )
+@click.option(
+    '--rules', is_flag=True, callback=_print_rules_callback, expose_value=False, is_eager=True,
+    help='Print the "Rules of pyin" and exit.'
+)
 @click.argument(
     'expression', required=True
 )
@@ -328,6 +387,11 @@ def main(i_stream, expression, o_stream, import_modules, write_true, reader_name
     https://github.com/geowurster/pyin/blob/master/Cookbook.md
     """
 
+    # Print the rules and wait before executing a command if the user hasn't set the proper environment variables
+    if _NO_WARN_ENV_KEY not in os.environ or os.environ[_NO_WARN_ENV_KEY] != _NO_WARN_ENV_VAL:
+        click.echo(RULES, err=True)
+        time.sleep(_WAIT_TIME)
+
     # This is the scope that is used for all eval and exec calls
     # All imported modules and user assigned variables are stored in here
     scope = {}
@@ -339,7 +403,7 @@ def main(i_stream, expression, o_stream, import_modules, write_true, reader_name
             click.echo("ERROR: Invalid number of lines: `%s' - must be a positive int or None.", err=True)
             sys.exit(1)
         if skip_lines is not None and skip_lines < 0:
-            click.echo("ERROR: Invalid number of skip lines: `%s' - must be a positive int or None.")
+            click.echo("ERROR: Invalid number of skip lines: `%s' - must be a positive int or None.", err=True)
             sys.exit(1)
 
         # Add additional imports to the operating scope

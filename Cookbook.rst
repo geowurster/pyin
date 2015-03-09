@@ -9,11 +9,25 @@ the intended use is for simple text transforms and filtering.  Regardless,
 examples can be found below with both the Python code necessary to complete the
 task and the equivalent ``pyin`` command.
 
-Things to remember:
-- ``pyin`` uses ``eval()`` and ``exec()``.  See the `README <https://github.com/geowurster/pyin/blob/master/README.rst>`__ for more information.
-- Data can be piped in via ``stdin`` instead of using the ``-i`` option.
-- The examples below may not work if blindly pasted into a console or interpreter.
-- You really shouldn't use ``pyin`` for some of this stuff...
+
+The Rules of pyin
+=================
+
+1. Don't call ``eval()`` in an expression - this will hopefully be locked out
+   in a future release.
+2. Use at your own risk.
+3. Don't use this in a production environment.  The intended use is for
+   filtering and transforming a relatively small number of input lines that
+   would normally take a few lines of boilerplate Python code, most of which
+   gets re-written every time.
+4. Before developing a more complicated expression use ``"line"`` and only
+   process a subsample.  This expression passes text through without any
+   alterations to make sure the input is as expected.
+5. Like most of Python this utility leaves the locks off the door in favor
+   of flexibility and more readable code.  The source code is short, well
+   commented, and is worth reading to better understand what is happening
+   behind the scenes.
+6. This may not be the utility for you.  Use only if confident.
 
 
 Copy/Paste on a Mac
