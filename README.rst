@@ -4,7 +4,7 @@ pyin
 
 It's like sed, but Python!
 
-.. image:: https://travis-ci.org/geowurster/pyin.svg?branch=0.4
+.. image:: https://travis-ci.org/geowurster/pyin.svg?branch=master
     :target: https://travis-ci.org/geowurster/pyin
 
 .. image:: https://coveralls.io/repos/geowurster/pyin/badge.svg?branch=master
