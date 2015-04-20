@@ -4,6 +4,10 @@ pyin
 
 It's like sed, but Python!
 
+This project is actively being developed but don't get too attached to any
+portions of the API or commandline syntax.  It's a pretty useful utility but
+should not be incorporated into any scripts or projects until ``v1.0``.
+
 .. image:: https://travis-ci.org/geowurster/pyin.svg?branch=master
     :target: https://travis-ci.org/geowurster/pyin
 
