@@ -15,7 +15,7 @@ except ImportError:  # pragma no cover
 import time
 
 import click
-import str2type
+import str2type.ext
 
 
 __all__ = ['pyin']
@@ -308,7 +308,7 @@ class _DefaultWriter(object):
     help="Load input stream into the specified reader."
 )
 @click.option(
-    '-ro', '--reader-option', metavar='KEY=VAL', multiple=True, callback=str2type.click_callback_key_val_dict,
+    '-ro', '--reader-option', metavar='KEY=VAL', multiple=True, callback=str2type.ext.click_cb_key_val,
     help="Keyword arguments for reader."
 )
 @click.option(
@@ -316,7 +316,7 @@ class _DefaultWriter(object):
     help="Load output stream into specified writer."
 )
 @click.option(
-    '-wo', '--writer-option', metavar='KEY=VAL', multiple=True, callback=str2type.click_callback_key_val_dict,
+    '-wo', '--writer-option', metavar='KEY=VAL', multiple=True, callback=str2type.ext.click_cb_key_val,
     help="Keyword arguments for writer."
 )
 @click.option(
@@ -328,7 +328,7 @@ class _DefaultWriter(object):
     help="Treat all input text as a single line."
 )
 @click.option(
-    '-v', '--variable', metavar='VAR=VAL', multiple=True, callback=str2type.click_callback_key_val_dict,
+    '-v', '--variable', metavar='VAR=VAL', multiple=True, callback=str2type.ext.click_cb_key_val,
     help="Assign additional variables for access in expression."
 )
 @click.option(
