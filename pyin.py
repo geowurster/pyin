@@ -21,7 +21,7 @@ import str2type.ext
 __all__ = ['pyin']
 
 
-__version__ = '0.4.3'
+__version__ = '0.4.4'
 __author__ = 'Kevin Wurster'
 __email__ = 'wursterk@gmail.com'
 __source__ = 'https://github.com/geowurster/pyin'
