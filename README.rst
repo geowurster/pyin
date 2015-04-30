@@ -5,8 +5,7 @@ pyin
 It's like sed, but Python!
 
 This project is actively being developed but don't get too attached to any
-portions of the API or commandline syntax.  It's a pretty useful utility but
-should not be incorporated into any scripts or projects until ``v1.0``.
+portions of the API or commandline syntax until ``v1.0``.
 
 .. image:: https://travis-ci.org/geowurster/pyin.svg?branch=master
     :target: https://travis-ci.org/geowurster/pyin
@@ -24,12 +23,15 @@ Change newline character in a CSV.
 
 .. code-block:: console
 
-    $ more sample-data/csv-with-header.csv | pyin "line.replace('\n', '\r\n')" > output.csv
+    $ more sample-data/csv-with-header.csv \
+        | pyin "line.replace('\n', '\r\n')" > output.csv
 
 Extract a BigQuery schema from an existing table and pretty print it:
 
 .. code-block:: console
-    $ bq show --format=json ${DATASET}.${TABLE} | pyin -m json -m pprint "pprint.pformat(json.loads(line)['schema']['fields'])"
+
+    $ bq show --format=json ${DATASET}.${TABLE} \
+        | pyin -m json -m pprint "pprint.pformat(json.loads(line)['schema']['fields'])"
     [{u'mode': u'NULLABLE', u'name': u'mmsi', u'type': u'STRING'},
     {u'mode': u'NULLABLE', u'name': u'longitude', u'type': u'FLOAT'},
     {u'mode': u'NULLABLE', u'name': u'latitude', u'type': u'FLOAT'}
@@ -55,12 +57,16 @@ Installing
 
 Via pip:
 
+.. code-block:: console
+
     $ pip install git+https://github.com/geowurster/pyin.git
 
 From master branch:
 
+.. code-block:: console
+
     $ git clone https://github.com/geowurster/pyin
-    $ python setup.py install
+    $ cd pyin && pip install .
 
 
 Gotchas
