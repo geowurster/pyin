@@ -6,6 +6,8 @@ Setup script for pyin
 """
 
 
+import os
+
 import setuptools
 
 
@@ -13,19 +15,11 @@ with open('README.rst') as f:
     readme_content = f.read().strip()
 
 
-with open('requirements.txt') as f:
-    install_requires = f.read().strip()
-
-
-with open('LICENSE.txt') as f:
-    license_content = f.read().strip()
-
-
 version = None
 author = None
 email = None
 source = None
-with open('pyin.py') as f:
+with open(os.path.join('pyin', '__init__.py')) as f:
     for line in f:
         if line.strip().startswith('__version__'):
             version = line.split('=')[1].strip().replace('"', '').replace("'", '')
@@ -54,11 +48,20 @@ setuptools.setup(
     description="basic streaming text processing",
     entry_points="""
         [console_scripts]
-        pyin=pyin:main
+        pyin=pyin.cli:main
     """,
+    extras_require={
+        'dev': [
+            'pytest',
+            'pytest-cov',
+            'coveralls'
+        ]
+    },
     include_package_data=True,
-    install_requires=install_requires,
-    license=license_content,
+    install_requires=[
+        'click>=3',
+    ],
+    license="New BSD",
     long_description=readme_content,
     py_modules=['pyin'],
     url=source,
