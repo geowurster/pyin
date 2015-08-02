@@ -53,3 +53,11 @@ def test_with_generator():
     assert result.exit_code == 0
     assert os.linesep.join(
         [json.dumps(list((i for i in line))) for line in CSV_WITH_HEADER.splitlines()])
+
+
+def test_with_blank_lines():
+    result = CliRunner().invoke(pyin.cli.main, [
+        'line'
+    ], input="")
+    assert result.exit_code == 0
+    assert result.output == ''

@@ -30,8 +30,9 @@ def _importer(string, scope, prefix=''):
 def pmap(expressions, iterable, var='line'):
 
     """
-    Like `map()` but with `eval()` and multiple Python expressions.  Expressions
-    can access the current line being processed with a variable called `line`.
+    Like `map()` but with `eval()` and multiple Python expressions.
+    Expressions can access the current line being processed with a variable
+    called `line`.
 
     It's like being dropped inside of a `for` loop and with the ability to
     create simple `if` statements and variable re-assignment.  This:
@@ -163,7 +164,9 @@ def pmap(expressions, iterable, var='line'):
                 obj = result
 
             # Result is True/False.  Only continue if True.
-            elif result:
+            # Have to explicitly let string_types through for ''
+            # which would otherwise be ignored.
+            elif isinstance(result, string_types) or result:
                 continue
 
             # Got something else?  Halt processing for this obj.
@@ -171,5 +174,7 @@ def pmap(expressions, iterable, var='line'):
                 obj = None
                 break
 
-        if obj:
+        # Have to explicitly let string_types through for ''
+        # which would otherwise be ignored.
+        if isinstance(obj, string_types) or obj:
             yield obj
