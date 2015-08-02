@@ -38,7 +38,7 @@ setuptools.setup(
     author=author,
     author_email=email,
     classifiers=[
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: BSD License',
         'Topic :: Text Processing :: Filters',
@@ -61,7 +61,7 @@ setuptools.setup(
     install_requires=[
         'click>=3',
     ],
-    license="New BSD",
+    license="MIT",
     long_description=readme_content,
     py_modules=['pyin'],
     url=source,

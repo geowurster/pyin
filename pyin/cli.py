@@ -33,29 +33,51 @@ import pyin.core
 def main(infile, outfile, expressions, no_newline):
 
     """
-    Map Python expressions across lines of text.
-
-    This utility is intended to eliminate the overhead associated with doing
-    weird one off text transforms and replace-all's that are often done by
-    copying output from a console window, pasting it into a text editor or
-    IPython via `%paste` where lines are then iterated over, transformed,
-    printed to the console, copied, and finally pasted somewhere else.  Instead,
-    the original lines can be streamed to `pyin` where the user can perform
-    standard Python string expressions or more complicated transforms by setting
-    up and tearing down specific readers and writers.
+    It's like sed, but Python!
 
     \b
-    Remove all spaces from every line:
-    \b
-        $ cat ${FILE} | pyin "line.replace(' ', '')"
+    Map Python expressions across lines of text.  If an expression evaluates as
+    'False' or 'None' then the current line is thrown away.  If an expression
+    evaluates as 'True' then the next expression is evaluated.  If a list or
+    dictionary is encountered it is JSON encoded.  All other objects are cast
+    to string.
 
     \b
-    Extract every other word from every line:
+    Newline characters are stripped from the end of each line before processing
+    and are added on write unless disabled with '--no-newline'.
+
     \b
-        $ cat ${FILE} | pyin "' '.join(line.split()[::2])
+    This utility employs 'eval()' internally but uses a limited scope to help
+    prevent accidental side effects, but there are plenty of ways to get around
+    this so don't pass anything through pyin that you wouldn't pass through
+    'eval()'.
+
+    \b
+    Remove lines that do not contain a specific word:
+    \b
+        $ cat INFILE | pyin "'word' in line"
+
+    \b
+    Capitalize lines containing a specific word:
+    \b
+        $ cat INFILE | pyin "line.upper() if 'word' in line else line"
+
+    \b
+    Only print every other word from lines that contain a specific word:
+    \b
+        $ cat INFILE | pyin \
+        > "'word' in line" \      # Get lines with 'word' in them
+        > "line.split()[::2])" \  # Grab every other word
+        > "' '.join(line)"        # Convert list from previous expr to str
+
+    \b
+    For a more in-depth explanation about exactly what's going on under the
+    hood, see the the docstring in 'pyin.core.pmap()':
+    \b
+        $ python -c "help('pin.core.pmap')"
     """
 
-    for line in pyin.core.pmap(expressions, infile):
+    for line in pyin.core.pmap(expressions, (l.rstrip(os.linesep) for l in infile)):
 
         if isinstance(line, (list, tuple, dict)):
             line = json.dumps(line)
