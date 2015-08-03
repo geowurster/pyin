@@ -9,6 +9,8 @@ __pycache__/
 .Python
 env/
 venv/
+venv2/
+.python-version
 build/
 develop-eggs/
 dist/
@@ -53,7 +55,6 @@ docs/_build/
 
 # PyBuilder
 target/
-
 
 # Intellij PyCharm
 .idea/
