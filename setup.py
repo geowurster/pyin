@@ -8,7 +8,8 @@ Setup script for pyin
 
 import os
 
-import setuptools
+from setuptools import find_packages
+from setuptools import setup
 
 
 with open('README.rst') as f:
@@ -33,7 +34,7 @@ with open(os.path.join('pyin', '__init__.py')) as f:
             break
 
 
-setuptools.setup(
+setup(
     name='pyin',
     author=author,
     author_email=email,
@@ -63,7 +64,7 @@ setuptools.setup(
     ],
     license="MIT",
     long_description=readme_content,
-    py_modules=['pyin'],
+    py_modules=find_packages(),
     url=source,
     version=version,
     zip_safe=True,
