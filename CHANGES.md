@@ -2,6 +2,12 @@ Changelog
 =========
 
 
+0.5.2 (2015-08-03)
+------------------
+
+- Actually fixed a critical packaging bug
+
+
 0.5.1 (2015-08-03)
 ------------------
 
