@@ -64,8 +64,8 @@ setup(
     ],
     license="MIT",
     long_description=readme_content,
-    py_modules=find_packages(),
+    packages=find_packages(exclude=['tests']),
     url=source,
     version=version,
-    zip_safe=True,
+    zip_safe=True
 )
