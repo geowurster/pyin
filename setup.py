@@ -46,7 +46,7 @@ setup(
         'Topic :: Text Processing :: General',
         'Topic :: Utilities'
     ],
-    description="basic streaming text processing",
+    description="It's like sed, but Python!",
     entry_points="""
         [console_scripts]
         pyin=pyin.cli:main
