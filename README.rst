@@ -31,7 +31,6 @@ non-string objects.
 
 .. code-block:: console
 
-    $ pyin --help
     Usage: pyin [OPTIONS] EXPRESSIONS...
 
       It's like sed, but Python!
@@ -60,7 +59,16 @@ non-string objects.
 
       Only print every other word from lines that contain a specific word:
 
-          $ cat INFILE | pyin "'word' in line" "' '.join(line[::2])"
+          $ cat INFILE | pyin \
+          > "'word' in line" \      # Get lines with 'word' in them
+          > "line.split()[::2])" \  # Grab every other word
+          > "' '.join(line)"         # Convert list from previous expr to str
+
+      Process all input text as though it was a single line to replace carriage
+      returns with the system newline character:
+
+          $ cat INFILE | pyin --block \
+          > "line.replace('\r\n', os.newline)"
 
       For a more in-depth explanation about exactly what's going on under the
       hood, see the the docstring in 'pyin.core.pmap()':
@@ -71,6 +79,8 @@ non-string objects.
       --version           Show the version and exit.
       -i, --infile PATH   Input text file. [default: stdin]
       -o, --outfile PATH  Output text file. [default: stdout]
+      --block             Operate on all input text as though it was a single
+                          line.
       --no-newline        Don't ensure each line ends with a newline character.
       --help              Show this message and exit.
 

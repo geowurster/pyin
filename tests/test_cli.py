@@ -61,3 +61,18 @@ def test_with_blank_lines():
     ], input="")
     assert result.exit_code == 0
     assert result.output == ''
+
+
+def test_block_mode():
+    text = json.dumps({k: None for k in range(10)}, indent=4)
+    assert len(text.splitlines()) > 1
+
+    result = CliRunner().invoke(pyin.cli.main, [
+        "--block",
+        "json.loads(line)",
+        "{k: v for k, v in line.items() if int(k) in range(5)}"
+    ], input=text)
+    assert result.exit_code == 0
+
+    expected = '{"3": null, "4": null, "0": null, "2": null, "1": null}'
+    assert json.loads(expected) == json.loads(result.output)
