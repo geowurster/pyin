@@ -73,7 +73,7 @@ non-string objects.
       For a more in-depth explanation about exactly what's going on under the
       hood, see the the docstring in 'pyin.core.pmap()':
 
-          $ python -c "help('pin.core.pmap')"
+          $ python -c "help('pyin.core.pmap')"
 
     Options:
       --version           Show the version and exit.

@@ -85,7 +85,7 @@ def main(infile, outfile, expressions, no_newline, block):
     For a more in-depth explanation about exactly what's going on under the
     hood, see the the docstring in 'pyin.core.pmap()':
     \b
-        $ python -c "help('pin.core.pmap')"
+        $ python -c "help('pyin.core.pmap')"
     """
 
     if block:
