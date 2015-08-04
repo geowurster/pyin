@@ -24,13 +24,17 @@ import pyin.core
     help="Output text file. [default: stdout]"
 )
 @click.option(
+    '--block', is_flag=True,
+    help="Operate on all input text as though it was a single line."
+)
+@click.option(
     '--no-newline', is_flag=True,
     help="Don't ensure each line ends with a newline character."
 )
 @click.argument(
     'expressions', required=True, nargs=-1,
 )
-def main(infile, outfile, expressions, no_newline):
+def main(infile, outfile, expressions, no_newline, block):
 
     """
     It's like sed, but Python!
@@ -65,10 +69,17 @@ def main(infile, outfile, expressions, no_newline):
     \b
     Only print every other word from lines that contain a specific word:
     \b
-        $ cat INFILE | pyin \
-        > "'word' in line" \      # Get lines with 'word' in them
-        > "line.split()[::2])" \  # Grab every other word
-        > "' '.join(line)"        # Convert list from previous expr to str
+        $ cat INFILE | pyin \\
+        > "'word' in line" \\      # Get lines with 'word' in them
+        > "line.split()[::2])" \\  # Grab every other word
+        > "' '.join(line)"         # Convert list from previous expr to str
+
+    \b
+    Process all input text as though it was a single line to replace carriage
+    returns with the system newline character:
+    \b
+        $ cat INFILE | pyin --block \\
+        > "line.replace('\\r\\n', os.newline)"
 
     \b
     For a more in-depth explanation about exactly what's going on under the
@@ -77,7 +88,12 @@ def main(infile, outfile, expressions, no_newline):
         $ python -c "help('pin.core.pmap')"
     """
 
-    for line in pyin.core.pmap(expressions, (l.rstrip(os.linesep) for l in infile)):
+    if block:
+        iterator = [infile.read()]
+    else:
+        iterator = (l.rstrip(os.linesep) for l in infile)
+
+    for line in pyin.core.pmap(expressions, iterator):
 
         if isinstance(line, (list, tuple, dict)):
             line = json.dumps(line)

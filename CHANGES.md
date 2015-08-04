@@ -2,6 +2,12 @@ Changelog
 =========
 
 
+0.5.3 (2015-08-03)
+------------------
+
+- Added `--block` flag to process all input text as a single unit - #36
+
+
 0.5.2 (2015-08-03)
 ------------------
 
