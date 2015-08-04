@@ -9,7 +9,7 @@ import logging
 logging.basicConfig()
 
 
-__version__ = '0.5.3'
+__version__ = '0.5.4'
 __author__ = 'Kevin Wurster'
 __email__ = 'wursterk@gmail.com'
 __source__ = 'https://github.com/geowurster/pyin'
