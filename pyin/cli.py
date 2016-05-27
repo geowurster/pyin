@@ -25,16 +25,19 @@ import pyin.core
 )
 @click.option(
     '--block', is_flag=True,
-    help="Operate on all input text as though it was a single line."
+    help="Place all input text into the `line` variable."
 )
 @click.option(
     '--no-newline', is_flag=True,
     help="Don't ensure each line ends with a newline character."
 )
+@click.option(
+    '--skip', 'skip_lines', type=click.IntRange(0), metavar='INTEGER', default=0,
+    help='Skip N input lines.')
 @click.argument(
     'expressions', required=True, nargs=-1,
 )
-def main(infile, outfile, expressions, no_newline, block):
+def main(infile, outfile, expressions, no_newline, block, skip_lines):
 
     """
     It's like sed, but Python!
@@ -87,6 +90,12 @@ def main(infile, outfile, expressions, no_newline, block):
     \b
         $ python -c "help('pyin.core.pmap')"
     """
+
+    for _ in range(skip_lines):
+        try:
+            next(infile)
+        except StopIteration:
+            raise click.ClickException("Skipped all input")
 
     if block:
         iterator = [infile.read()]
