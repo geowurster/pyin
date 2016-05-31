@@ -4,13 +4,19 @@ Commandline interface for pyin
 
 
 import json
-import logging
 import os
+import sys
 
 import click
 
 import pyin
 import pyin.core
+
+
+if sys.version_info.major == 2:
+    text_type = unicode
+else:
+    text_type = str
 
 
 @click.command(name='pyin')
@@ -107,7 +113,7 @@ def main(infile, outfile, expressions, no_newline, block, skip_lines):
         if isinstance(line, (list, tuple, dict)):
             line = json.dumps(line)
         else:
-            line = str(line)
+            line = text_type(line)
 
         if not no_newline and not line.endswith(os.linesep):
             line += os.linesep
