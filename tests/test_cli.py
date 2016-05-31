@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+
+
 import json
 import os
 from os import path
@@ -76,3 +79,13 @@ def test_block_mode():
 
     expected = '{"3": null, "4": null, "0": null, "2": null, "1": null}'
     assert json.loads(expected) == json.loads(result.output)
+
+
+def test_unicode(runner):
+
+    text = u"""Héllö"""
+    result = runner.invoke(pyin.cli.main, [
+        'line.upper()'
+    ], input=text)
+    assert result.exit_code == 0
+    assert result.output.strip() == text.strip().upper()
