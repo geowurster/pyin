@@ -1,11 +1,17 @@
 # -*- coding: utf-8 -*-
 
 
+"""
+Unittests for $ pyin
+"""
+
+
 import json
 import os
 from os import path
 
 from click.testing import CliRunner
+import pytest
 
 import pyin.cli
 
@@ -89,3 +95,23 @@ def test_unicode(runner):
     ], input=text)
     assert result.exit_code == 0
     assert result.output.strip() == text.strip().upper()
+
+
+@pytest.mark.parametrize("skip_lines", [1, 3])
+def test_skip_single_line(runner, skip_lines):
+    result = runner.invoke(pyin.cli.main, [
+        '--skip', skip_lines,
+        'line'
+    ], input=CSV_WITH_HEADER)
+    assert result.exit_code == 0
+    expected = os.linesep.join(CSV_WITH_HEADER.splitlines()[skip_lines:])
+    assert result.output.strip() == expected.strip()
+
+
+def test_skip_all_input(runner):
+    result = runner.invoke(pyin.cli.main, [
+        '--skip', 100,
+        'line'
+    ], input=CSV_WITH_HEADER)
+    assert result.output != 0
+    assert 'skipped' in result.output.lower()

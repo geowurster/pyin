@@ -1,4 +1,6 @@
-"""pytest fixtures"""
+"""
+pytest fixtures
+"""
 
 
 from click.testing import CliRunner
