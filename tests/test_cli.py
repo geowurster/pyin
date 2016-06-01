@@ -9,6 +9,7 @@ Unittests for $ pyin
 import json
 import os
 from os import path
+import textwrap
 
 from click.testing import CliRunner
 import pytest
@@ -48,7 +49,7 @@ def test_multiple_expr():
 
 def test_with_imports():
     result = CliRunner().invoke(pyin.cli.main, [
-        'tests.module.function(line)'
+        'tests.module.upper(line)'
     ], input=CSV_WITH_HEADER)
     assert result.exit_code == 0
     assert result.output == CSV_WITH_HEADER.upper()
@@ -115,3 +116,25 @@ def test_skip_all_input(runner):
     ], input=CSV_WITH_HEADER)
     assert result.output != 0
     assert 'skipped' in result.output.lower()
+
+
+def test_repr(runner):
+
+    text = """
+    2015-01-01
+    2015-01-02
+    2015-01-03
+    """.strip()
+
+    result = runner.invoke(pyin.cli.main, [
+        "line.strip()",
+        "datetime.datetime.strptime(line, '%Y-%m-%d')",
+        "isinstance(line, datetime.datetime)"
+    ], input=text)
+
+    assert result.exit_code == 0
+    assert result.output.strip() == textwrap.dedent("""
+    datetime.datetime(2015, 1, 1, 0, 0)
+    datetime.datetime(2015, 1, 2, 0, 0)
+    datetime.datetime(2015, 1, 3, 0, 0)
+    """).strip()

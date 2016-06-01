@@ -13,10 +13,12 @@ import pyin
 import pyin.core
 
 
-if sys.version_info.major == 2:
+if sys.version_info.major == 2:  # pragma no cover
     text_type = unicode
-else:
+    string_types = basestring,
+else:  # pragma no cover
     text_type = str
+    string_types = str,
 
 
 @click.command(name='pyin')
@@ -110,10 +112,12 @@ def main(infile, outfile, expressions, no_newline, block, skip_lines):
 
     for line in pyin.core.pmap(expressions, iterator):
 
-        if isinstance(line, (list, tuple, dict)):
+        if isinstance(line, string_types):
+            pass
+        elif isinstance(line, (list, tuple, dict)):
             line = json.dumps(line)
         else:
-            line = text_type(line)
+            line = repr(line)
 
         if not no_newline and not line.endswith(os.linesep):
             line += os.linesep
