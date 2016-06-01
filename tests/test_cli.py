@@ -9,6 +9,8 @@ Unittests for $ pyin
 import json
 import os
 from os import path
+import sys
+import textwrap
 
 from click.testing import CliRunner
 import pytest
@@ -46,9 +48,12 @@ def test_multiple_expr():
     assert result.output.strip() == expected.strip()
 
 
+@pytest.mark.skipif(
+    sys.version_info[:2] == (3, 3),
+    reason="Importing in early versions of Python3 is different?")
 def test_with_imports():
     result = CliRunner().invoke(pyin.cli.main, [
-        'tests.module.function(line)'
+        'tests._test_module.upper(line)'
     ], input=CSV_WITH_HEADER)
     assert result.exit_code == 0
     assert result.output == CSV_WITH_HEADER.upper()
@@ -58,7 +63,6 @@ def test_with_generator():
     result = CliRunner().invoke(pyin.cli.main, [
         "(i for i in line)"
     ], input=CSV_WITH_HEADER)
-    print(result.output)
     assert result.exit_code == 0
     assert os.linesep.join(
         [json.dumps(list((i for i in line))) for line in CSV_WITH_HEADER.splitlines()])
@@ -115,3 +119,29 @@ def test_skip_all_input(runner):
     ], input=CSV_WITH_HEADER)
     assert result.output != 0
     assert 'skipped' in result.output.lower()
+
+
+@pytest.mark.skipif(
+    sys.version_info.major == 2,
+    reason="RuntimeError: cannot unmarshal code objects in restricted "
+           "execution mode")
+def test_repr(runner):
+
+    text = """
+    2015-01-01
+    2015-01-02
+    2015-01-03
+    """.strip()
+
+    result = runner.invoke(pyin.cli.main, [
+        "line.strip()",
+        "datetime.datetime.strptime(line, '%Y-%m-%d')",
+        "isinstance(line, datetime.datetime)"
+    ], input=text)
+
+    assert result.exit_code == 0
+    assert result.output.strip() == textwrap.dedent("""
+    datetime.datetime(2015, 1, 1, 0, 0)
+    datetime.datetime(2015, 1, 2, 0, 0)
+    datetime.datetime(2015, 1, 3, 0, 0)
+    """).strip()
