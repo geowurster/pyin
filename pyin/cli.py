@@ -4,6 +4,7 @@ Commandline interface for pyin
 
 
 import json
+import itertools as it
 import os
 import sys
 
@@ -24,28 +25,30 @@ else:  # pragma no cover
 @click.command(name='pyin')
 @click.version_option(pyin.__version__)
 @click.option(
-    '-i', '--infile', metavar='PATH', type=click.File(mode='r'), default='-',
-    help="Input text file. [default: stdin]"
-)
+    '-i', '--infile', 'infiles', metavar='PATH', type=click.File(mode='r'),
+    default='-', multiple=True, show_default=True,
+    help="Input text file.  Use '-' for stdin.  Can be used multiple times to "
+         "specify multiple input files, which is like: $ cat * | pyin")
 @click.option(
-    '-o', '--outfile', metavar='PATH', type=click.File(mode='w'), default='-',
-    help="Output text file. [default: stdout]"
-)
+    '-o', '--outfile', metavar='PATH', type=click.File(mode='w'),
+    default='-', show_default=True,
+    help="Output text file.  Use '-' for stdout.")
 @click.option(
     '--block', is_flag=True,
-    help="Place all input text into the `line` variable."
-)
+    help="Place all input text into the `line` variable.")
 @click.option(
     '--no-newline', is_flag=True,
-    help="Don't ensure each line ends with a newline character."
-)
+    help="Don't ensure each line ends with a newline character.")
 @click.option(
-    '--skip', 'skip_lines', type=click.IntRange(0), metavar='INTEGER', default=0,
-    help='Skip N input lines.')
+    '--skip', 'skip_lines', type=click.IntRange(0), metavar='INTEGER',
+    default=0,
+    help='Skip N lines in the input text stream before processing.  When '
+         'operating in block processing mode the lines are skipped before the '
+         'text is converted to a block.  When operating on multiple input '
+         'only lines in the first file are skipped.')
 @click.argument(
-    'expressions', required=True, nargs=-1,
-)
-def main(infile, outfile, expressions, no_newline, block, skip_lines):
+    'expressions', required=True, nargs=-1)
+def main(infiles, outfile, expressions, no_newline, block, skip_lines):
 
     """
     It's like sed, but Python!
@@ -99,16 +102,18 @@ def main(infile, outfile, expressions, no_newline, block, skip_lines):
         $ python -c "help('pyin.core.pmap')"
     """
 
+    input_stream = it.chain.from_iterable(infiles)
+
     for _ in range(skip_lines):
         try:
-            next(infile)
+            next(input_stream)
         except StopIteration:
             raise click.ClickException("Skipped all input")
 
     if block:
-        iterator = [infile.read()]
+        iterator = [os.linesep.join((f.read() for f in infiles))]
     else:
-        iterator = (l.rstrip(os.linesep) for l in infile)
+        iterator = (l.rstrip(os.linesep) for l in input_stream)
 
     for line in pyin.core.pmap(expressions, iterator):
 

@@ -145,3 +145,19 @@ def test_repr(runner):
     datetime.datetime(2015, 1, 2, 0, 0)
     datetime.datetime(2015, 1, 3, 0, 0)
     """).strip()
+
+
+def test_multi_infile(path_csv_with_header, runner):
+    result = runner.invoke(pyin.cli.main, [
+        '-i', path_csv_with_header,
+        '-i', path_csv_with_header,
+        'line'
+    ])
+    assert result.exit_code == 0
+
+    expected = ''
+    for _ in range(2):
+        with open(path_csv_with_header) as f:
+            expected += f.read()
+
+    assert result.output == expected
