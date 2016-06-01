@@ -58,3 +58,6 @@ target/
 
 # Intellij PyCharm
 .idea/
+
+ignore/
+buh.py
