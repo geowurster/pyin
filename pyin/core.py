@@ -157,26 +157,15 @@ def pmap(expressions, iterable, var='line'):
     if isinstance(expressions, _compat.string_types):
         expressions = expressions,
 
-    blacklist = (
-        'eval', 'compile', 'exec', 'execfile', 'builtin', 'builtins',
-        '__builtin__', '__builtins__', 'globals', 'locals', '_importer', 'map')
-
-    global_scope = {
-        k: v for k, v in globals().items() if k not in ('builtins', '__builtins__')}
-    global_scope.update(__builtins__={
-        k: v for k, v in globals()['__builtins__'].items() if k not in blacklist})
-    global_scope.update(builtins=global_scope['__builtins__'])
-
-    local_scope = {}
+    global_scope = {}
     for expr in expressions:
-        _importer(expr, local_scope)
+        global_scope.update(_importer(expr, global_scope))
 
     for idx, obj in enumerate(iterable):
 
         for expr in expressions:
 
-            local_scope.update(**{'idx': idx, var: obj})
-            result = eval(expr, global_scope, local_scope)
+            result = eval(expr, global_scope, {'idx': idx, var: obj})
 
             # Got a generator.  Expand and continue.
             if isinstance(result, GeneratorType):
