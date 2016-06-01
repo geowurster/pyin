@@ -17,14 +17,42 @@ else:  # pragma no cover
     string_types = str,
 
 
-def _importer(string, scope, prefix=''):
-    matches = set(re.findall(r"(%s[a-zA-Z_][a-zA-Z0-9_]*)\.?" % prefix, string))
-    for name in matches:
+def _importer(string, scope):
+
+    """
+    Parse expressions and import modules into a scope.
+    """
+
+    matches = set(re.findall("([a-zA-Z_.][a-zA-Z0-9_.]*)", string))
+    for m in matches:
+
+        split = m.split('.', 1)
+
+        # Like: json.loads(line)
+        if len(split) == 1:
+            module = split[0]
+            other = []
+        # Like: tests.module.upper(line)
+        elif len(split) == 2:
+            module, other = split
+            other = [other]
+        # Shouldn't hit this
+        else:  # pragma no cover
+            raise RuntimeError("Error importing: {}".format(m))
+
+        # Are you trying to figure out why relative imports don't work?  If so,
+        # the issue is probably `m.split()` producing ['', 'name'] instead of
+        # ['.name'].  `__import__('.name')__` doesn't appear to work though,
+        # so good luck!
+        if not module:
+            continue
+
         try:
-            scope[name] = __import__(name)
-            _importer(string, scope, prefix='{}.'.format(name))
+            scope[module] = __import__(module, fromlist=other, level=0)
         except ImportError:
             pass
+
+    return scope
 
 
 def pmap(expressions, iterable, var='line'):
@@ -132,7 +160,7 @@ def pmap(expressions, iterable, var='line'):
         expressions = expressions,
 
     blacklist = ('eval', 'compile', 'exec', 'execfile', 'builtin', 'builtins',
-                 '__builtin__', '__builtins__', 'globals', 'locals', '__import__',
+                 '__builtin__', '__builtins__', 'globals', 'locals',
                  '_importer', 'map')
 
     global_scope = {

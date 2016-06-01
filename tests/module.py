@@ -1,5 +1,5 @@
 # Don't delete.  Required for `package.module.function` import testing.
 
 
-def function(item):
+def upper(item):
     return item.upper()
