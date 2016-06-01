@@ -16,10 +16,7 @@ with open('README.rst') as f:
     readme_content = f.read().strip()
 
 
-version = None
-author = None
-email = None
-source = None
+version = author = email = source = None
 with open(os.path.join('pyin', '__init__.py')) as f:
     for line in f:
         if line.strip().startswith('__version__'):
@@ -30,7 +27,7 @@ with open(os.path.join('pyin', '__init__.py')) as f:
             email = line.split('=')[1].strip().replace('"', '').replace("'", '')
         elif line.strip().startswith('__source__'):
             source = line.split('=')[1].strip().replace('"', '').replace("'", '')
-        elif None not in (version, author, email, source):
+        elif all((version, author, email, source)):
             break
 
 
@@ -62,7 +59,7 @@ setup(
     install_requires=[
         'click>=3',
     ],
-    license="MIT",
+    license="New BSD",
     long_description=readme_content,
     packages=find_packages(exclude=['tests']),
     url=source,
