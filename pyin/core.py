@@ -48,7 +48,10 @@ def _importer(string, scope):
             continue
 
         try:
-            scope[module] = __import__(module, fromlist=other, level=0)
+            scope[module] = __import__(
+                module,
+                fromlist=list(map(str, other)),  # Python 2 can't handle unicode
+                level=0)
         except ImportError:
             pass
 

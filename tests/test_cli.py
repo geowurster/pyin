@@ -9,6 +9,7 @@ Unittests for $ pyin
 import json
 import os
 from os import path
+import sys
 import textwrap
 
 from click.testing import CliRunner
@@ -49,7 +50,7 @@ def test_multiple_expr():
 
 def test_with_imports():
     result = CliRunner().invoke(pyin.cli.main, [
-        'tests.module.upper(line)'
+        'tests._test_module.upper(line)'
     ], input=CSV_WITH_HEADER)
     assert result.exit_code == 0
     assert result.output == CSV_WITH_HEADER.upper()
@@ -59,7 +60,6 @@ def test_with_generator():
     result = CliRunner().invoke(pyin.cli.main, [
         "(i for i in line)"
     ], input=CSV_WITH_HEADER)
-    print(result.output)
     assert result.exit_code == 0
     assert os.linesep.join(
         [json.dumps(list((i for i in line))) for line in CSV_WITH_HEADER.splitlines()])
@@ -118,6 +118,10 @@ def test_skip_all_input(runner):
     assert 'skipped' in result.output.lower()
 
 
+@pytest.mark.skipif(
+    sys.version_info.major == 2,
+    reason="RuntimeError: cannot unmarshal code objects in restricted "
+           "execution mode")
 def test_repr(runner):
 
     text = """
