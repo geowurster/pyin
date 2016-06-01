@@ -25,3 +25,9 @@ def test_importer():
     out = pyin.core._importer('tests._test_module.function', {})
     assert out == {'tests': tests}
     assert out['tests']._test_module.upper('word') == 'WORD'
+
+
+def test_with_map():
+    result = list(pyin.core.pmap(
+        "list(map(int, line.split('-')))", ['2015-01-01']))
+    assert result == [[2015, 1, 1]]
