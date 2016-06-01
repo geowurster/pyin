@@ -16,4 +16,10 @@ def runner():
 
 @pytest.fixture(scope='module')
 def path_csv_with_header():
-    return os.path.join('sample-data', 'csv-with-header.csv')
+    return os.path.join('tests', 'data', 'csv-with-header.csv')
+
+
+@pytest.fixture(scope='module')
+def csv_with_header_content(path_csv_with_header):
+    with open(path_csv_with_header) as f:
+        return f.read()
