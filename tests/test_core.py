@@ -3,6 +3,10 @@ Unittests for: pyin.core
 """
 
 
+import sys
+
+import pytest
+
 import pyin.core
 import tests._test_module
 
@@ -15,6 +19,9 @@ def test_single_expr():
         assert 20 <= item <= 80
 
 
+@pytest.mark.skipif(
+    sys.version_info[:2] == (3, 3),
+    reason="Importing in early versions of Python3 is different?")
 def test_importer():
 
     out = pyin.core._importer('tests._test_module.function', {})

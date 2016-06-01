@@ -48,6 +48,9 @@ def test_multiple_expr():
     assert result.output.strip() == expected.strip()
 
 
+@pytest.mark.skipif(
+    sys.version_info[:2] == (3, 3),
+    reason="Importing in early versions of Python3 is different?")
 def test_with_imports():
     result = CliRunner().invoke(pyin.cli.main, [
         'tests._test_module.upper(line)'
