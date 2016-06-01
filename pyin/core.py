@@ -4,17 +4,12 @@ Core components for pyin
 
 
 import re
-import sys
 from types import GeneratorType
 
+from pyin import _compat
 
-__all__ = ['pyin']
 
-
-if sys.version_info[0] == 2:  # pragma no cover
-    string_types = basestring,
-else:  # pragma no cover
-    string_types = str,
+__all__ = ['pmap']
 
 
 def _importer(string, scope):
@@ -152,19 +147,19 @@ def pmap(expressions, iterable, var='line'):
         A single Python expression or tuple containing multiple expressions.
         Expressions are Python code that can reference external modules, which
         will automatically be imported.
-    iterator : hasattr('__iter__')
+    iterable : hasattr('__iter__')
         An iterator producing one object to be evaluated per iteration.
     var : str, optional
         Expressions reference this variable to access objects from `iterator`
         during processing.
     """
 
-    if isinstance(expressions, string_types):
+    if isinstance(expressions, _compat.string_types):
         expressions = expressions,
 
-    blacklist = ('eval', 'compile', 'exec', 'execfile', 'builtin', 'builtins',
-                 '__builtin__', '__builtins__', 'globals', 'locals',
-                 '_importer', 'map')
+    blacklist = (
+        'eval', 'compile', 'exec', 'execfile', 'builtin', 'builtins',
+        '__builtin__', '__builtins__', 'globals', 'locals', '_importer', 'map')
 
     global_scope = {
         k: v for k, v in globals().items() if k not in ('builtins', '__builtins__')}
@@ -172,9 +167,6 @@ def pmap(expressions, iterable, var='line'):
         k: v for k, v in globals()['__builtins__'].items() if k not in blacklist})
     global_scope.update(builtins=global_scope['__builtins__'])
 
-    # In Python3 map is a generator and not expanded but we can probably
-    # safely assume that pyin users aren't doing anything tooooo crazy
-    # with map so we just force it to be a list
     local_scope = {}
     for expr in expressions:
         _importer(expr, local_scope)
@@ -197,7 +189,7 @@ def pmap(expressions, iterable, var='line'):
             # Result is True/False.  Only continue if True.
             # Have to explicitly let string_types through for ''
             # which would otherwise be ignored.
-            elif isinstance(result, string_types) or result:
+            elif isinstance(result, _compat.string_types) or result:
                 continue
 
             # Got something else?  Halt processing for this obj.
@@ -207,5 +199,5 @@ def pmap(expressions, iterable, var='line'):
 
         # Have to explicitly let string_types through for ''
         # which would otherwise be ignored.
-        if isinstance(obj, string_types) or obj:
+        if isinstance(obj, _compat.string_types) or obj:
             yield obj

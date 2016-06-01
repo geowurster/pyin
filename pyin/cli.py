@@ -6,20 +6,12 @@ Commandline interface for pyin
 import json
 import itertools as it
 import os
-import sys
 
 import click
 
 import pyin
 import pyin.core
-
-
-if sys.version_info.major == 2:  # pragma no cover
-    text_type = unicode
-    string_types = basestring,
-else:  # pragma no cover
-    text_type = str
-    string_types = str,
+from pyin import _compat
 
 
 @click.command(name='pyin')
@@ -111,13 +103,13 @@ def main(infiles, outfile, expressions, no_newline, block, skip_lines):
             raise click.ClickException("Skipped all input")
 
     if block:
-        iterator = [os.linesep.join((f.read() for f in infiles))]
+        iterable = [os.linesep.join((f.read() for f in infiles))]
     else:
-        iterator = (l.rstrip(os.linesep) for l in input_stream)
+        iterable = (l.rstrip(os.linesep) for l in input_stream)
 
-    for line in pyin.core.pmap(expressions, iterator):
+    for line in pyin.core.pmap(expressions, iterable):
 
-        if isinstance(line, string_types):
+        if isinstance(line, _compat.string_types):
             pass
         elif isinstance(line, (list, tuple, dict)):
             line = json.dumps(line)
