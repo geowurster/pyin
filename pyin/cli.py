@@ -6,6 +6,7 @@ Commandline interface for pyin
 import json
 import itertools as it
 import os
+import sys
 
 import click
 
@@ -119,4 +120,10 @@ def main(infiles, outfile, expressions, no_newline, block, skip_lines):
         if not no_newline and not line.endswith(os.linesep):
             line += os.linesep
 
-        outfile.write(line)
+        try:
+            outfile.write(line)
+        except IOError as e:
+            if sys.version_info.major == 2 and 'broken pipe' in str(e).lower():
+                break
+            else:  # pragma no cover
+                raise

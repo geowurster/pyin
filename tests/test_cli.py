@@ -8,6 +8,7 @@ Unittests for $ pyin
 
 import json
 import os
+import subprocess
 import sys
 import textwrap
 
@@ -155,3 +156,14 @@ def test_multi_infile(path_csv_with_header, runner):
             expected += f.read()
 
     assert result.output == expected
+
+
+def test_catch_IOError(path_csv_with_header):
+
+    """Python produces an IOError if the input is stdin, and the output is
+    stdout piped to another process that does not completely consume the input.
+    """
+
+    result = subprocess.check_output(
+        "cat {} | pyin line | head -1".format(path_csv_with_header), shell=True)
+    assert result.decode().strip() == '"field1","field2","field3"'.strip()
