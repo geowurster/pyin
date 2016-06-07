@@ -31,3 +31,12 @@ def test_with_map():
     result = list(pyin.core.pmap(
         "list(map(int, line.split('-')))", ['2015-01-01']))
     assert result == [[2015, 1, 1]]
+
+
+@pytest.mark.parametrize("obj", [
+    'map', 'reduce', 'op', 'it'
+])
+def test_scope(obj):
+    """Make sure specific objects aren't removed from the scope."""
+    for res in pyin.core.pmap(obj, 'word'):
+        pass
