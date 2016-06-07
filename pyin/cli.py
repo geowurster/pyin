@@ -41,7 +41,8 @@ from pyin import _compat
          'only lines in the first file are skipped.')
 @click.argument(
     'expressions', required=True, nargs=-1)
-def main(infiles, outfile, expressions, no_newline, block, skip_lines):
+@click.pass_context
+def main(ctx, infiles, outfile, expressions, no_newline, block, skip_lines):
 
     """
     It's like sed, but Python!
@@ -124,6 +125,6 @@ def main(infiles, outfile, expressions, no_newline, block, skip_lines):
             outfile.write(line)
         except IOError as e:
             if sys.version_info.major == 2 and 'broken pipe' in str(e).lower():
-                break
+                ctx.exit()
             else:  # pragma no cover
                 raise
