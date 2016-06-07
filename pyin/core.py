@@ -3,6 +3,9 @@ Core components for pyin
 """
 
 
+import functools
+import itertools
+import operator
 import re
 from types import GeneratorType
 
@@ -157,7 +160,11 @@ def pmap(expressions, iterable, var='line'):
     if isinstance(expressions, _compat.string_types):
         expressions = expressions,
 
-    global_scope = {}
+    global_scope = {
+        'it': itertools,
+        'op': operator,
+        'reduce': functools.reduce}
+
     for expr in expressions:
         global_scope.update(_importer(expr, global_scope))
 
