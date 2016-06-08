@@ -40,3 +40,9 @@ def test_scope(obj):
     """Make sure specific objects aren't removed from the scope."""
     for res in pyin.core.pmap(obj, 'word'):
         pass
+
+
+def test_floating_point_division():
+    result = next(pyin.core.pmap('5 / 3', ['']))
+    assert isinstance(result, float)
+    assert 1 < result < 2

@@ -3,6 +3,8 @@ Core components for pyin
 """
 
 
+from __future__ import division
+
 import functools
 import itertools
 import operator
