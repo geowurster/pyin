@@ -105,6 +105,26 @@ class JSON(BaseOperation):
         return map(func, stream)
 
 
+class Slice(BaseOperation):
+
+    tokens = '%slice',
+    kwargs = OrderedDict([('chunksize', int)])
+
+    def __init__(self, chunksize, **kwargs):
+        self.chunksize = chunksize
+        super(Slice, self).__init__(**kwargs)
+
+    def __call__(self, stream):
+        slicer = it.islice
+        chunksize = self.chunksize
+        while True:
+            v = tuple(slicer(stream, chunksize))
+            if v:
+                yield v
+            else:
+                return
+
+
 for _cls in filter(inspect.isclass, locals().copy().values()):
     if _cls != BaseOperation and issubclass(_cls, BaseOperation):
         for _tkn in _cls.tokens:
