@@ -43,6 +43,14 @@ class Eval(BaseOperation):
             yield eval(expression, global_scope, local_scope)
 
 
+class Accumulate(BaseOperation):
+
+    tokens = ('%accumulate', '%acc')
+
+    def __call__(self, stream):
+        yield tuple(stream)
+
+
 class Filter(BaseOperation):
 
     tokens = '%filter',
