@@ -1,10 +1,3 @@
-"""
-Core components for pyin
-"""
-
-
-from __future__ import division
-
 import functools
 import itertools
 import operator
@@ -13,10 +6,7 @@ import re
 import traceback
 from types import GeneratorType
 
-from pyin import _compat
-
-
-__all__ = ['pmap']
+from . import _compat
 
 
 def _importer(string, scope):
@@ -52,7 +42,8 @@ def _importer(string, scope):
         try:
             scope[module] = __import__(
                 module,
-                fromlist=list(map(str, other)),  # Python 2 can't handle unicode
+                # Python 2 can't handle unicode
+                fromlist=list(map(str, other)),
                 level=0)
         except ImportError:
             pass

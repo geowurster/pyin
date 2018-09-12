@@ -1,5 +1,5 @@
 """
-Unittests for: pyin.core
+Unittests for: pyin.evaluate
 """
 
 
@@ -7,19 +7,26 @@ import sys
 
 import pytest
 
-import pyin.core
+import pyin.evaluate
+from pyin.evaluate import _importer
 import tests._test_module
 
 
 def test_single_expr():
-    result = list(pyin.core.pmap("20 <= line <= 80", range(100)))
+    result = list(pyin.evaluate.pmap("20 <= line <= 80", range(100)))
     assert len(result) == len(list(range(20, 81)))
     for item in result:
         assert 20 <= item <= 80
 
 
+def test_importer():
+    out = _importer('tests._test_module.function', {})
+    assert out == {'tests': tests}
+    assert out['tests']._test_module.upper('word') == 'WORD'
+
+
 def test_with_map():
-    result = list(pyin.core.pmap(
+    result = list(pyin.evaluate.pmap(
         "list(map(int, line.split('-')))", ['2015-01-01']))
     assert result == [[2015, 1, 1]]
 
@@ -29,12 +36,12 @@ def test_with_map():
 ])
 def test_scope(obj):
     """Make sure specific objects aren't removed from the scope."""
-    for res in pyin.core.pmap(obj, 'word'):
+    for res in pyin.evaluate.pmap(obj, 'word'):
         pass
 
 
 def test_floating_point_division():
-    result = next(pyin.core.pmap('5 / 3', ['']))
+    result = next(pyin.evaluate.pmap('5 / 3', ['']))
     assert isinstance(result, float)
     assert 1 < result < 2
 
@@ -45,4 +52,4 @@ def test_floating_point_division():
 ])
 def test_invalid_expression(expression):
     with pytest.raises(SyntaxError):
-        next(pyin.core.pmap(expression, []))
+        next(pyin.evaluate.pmap(expression, []))
