@@ -8,7 +8,7 @@ import sys
 import pytest
 
 import pyin.evaluate
-from pyin.evaluate import _importer
+from pyin.evaluate import importer
 import tests._test_module
 
 
@@ -20,7 +20,7 @@ def test_single_expr():
 
 
 def test_importer():
-    out = _importer('tests._test_module.function', {})
+    out = importer('tests._test_module.function', {})
     assert out == {'tests': tests}
     assert out['tests']._test_module.upper('word') == 'WORD'
 

@@ -9,44 +9,60 @@ from types import GeneratorType
 from . import _compat
 
 
-def _importer(string, scope):
+def importer(expressions, scope=None):
 
+    """Parse expressions and import modules into a single scope.
+
+    Parameters
+    ----------
+    expressions : str
+        Sequence of expressions.
+    scope : dict or None, optional
+        Existing local scope into which imports will be propogated.
+
+    Returns
+    -------
+    dict
+        Modified ``scope``.
     """
-    Parse expressions and import modules into a scope.
-    """
 
-    matches = set(re.findall("([a-zA-Z_.][a-zA-Z0-9_.]*)", string))
-    for m in matches:
+    if isinstance(expressions, _compat.string_types):
+        expressions = [expressions]
 
-        split = m.split('.', 1)
+    scope = scope or {}
 
-        # Like: json.loads(line)
-        if len(split) == 1:
-            module = split[0]
-            other = []
-        # Like: tests.module.upper(line)
-        elif len(split) == 2:
-            module, other = split
-            other = [other]
-        # Shouldn't hit this
-        else:  # pragma no cover
-            raise RuntimeError("Error importing: {}".format(m))
+    for expr in expressions:
+        matches = set(re.findall(r"([a-zA-Z_.][a-zA-Z0-9_.]*)", expr))
+        for m in matches:
 
-        # Are you trying to figure out why relative imports don't work?  If so,
-        # the issue is probably `m.split()` producing ['', 'name'] instead of
-        # ['.name'].  `__import__('.name')__` doesn't appear to work though,
-        # so good luck!
-        if not module:
-            continue
+            split = m.split('.', 1)
 
-        try:
-            scope[module] = __import__(
-                module,
-                # Python 2 can't handle unicode
-                fromlist=list(map(str, other)),
-                level=0)
-        except ImportError:
-            pass
+            # Like: json.loads(line)
+            if len(split) == 1:
+                module = split[0]
+                other = []
+            # Like: tests.module.upper(line)
+            elif len(split) == 2:
+                module, other = split
+                other = [other]
+            # Shouldn't hit this
+            else:  # pragma no cover
+                raise ImportError("Error importing from: {}".format(m))
+
+            # Are you trying to figure out why relative imports don't work?
+            # If so, the issue is probably `m.split()` producing ['', 'name']
+            # instead of ['.name'].  `__import__('.name')__` doesn't appear
+            # to work though, so good luck!
+            if not module:
+                continue
+
+            try:
+                scope[module] = __import__(
+                    module,
+                    fromlist=list(map(str, other)),
+                    level=0)
+            except ImportError:
+                pass
 
     return scope
 
@@ -157,13 +173,13 @@ def pmap(expressions, iterable, var='line'):
     else:
         expressions = tuple(expressions)
 
-    global_scope = {
-        'it': itertools,
-        'op': operator,
-        'reduce': functools.reduce}
-
-    for expr in expressions:
-        global_scope.update(_importer(expr, global_scope))
+    global_scope = importer(
+        expressions,
+        {
+            'it': itertools,
+            'op': operator,
+            'reduce': functools.reduce
+        })
 
     compiled_expressions = []
     for expr in expressions:
