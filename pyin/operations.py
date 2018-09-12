@@ -8,6 +8,7 @@ from collections import OrderedDict
 import inspect
 import itertools as it
 import json
+import sys
 
 from ._compat import filter, string_types
 
@@ -77,6 +78,17 @@ class Filter(BaseOperation):
             lambda x: eval(
                 expression, self.global_scope, {'line': x, 'stream': stream}),
             stream)
+
+
+class FilterFalse(Filter):
+
+    tokens = ('%filterfalse', '%ff')
+
+    if sys.version_info[0] == 2:
+        def filterfunc(self, key, stream):
+            return filter(lambda x: not key(x), stream)
+    else:
+        filterfunc = it.filterfalse
 
 
 class JSON(BaseOperation):
