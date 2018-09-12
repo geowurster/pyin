@@ -51,6 +51,14 @@ class Accumulate(BaseOperation):
         yield tuple(stream)
 
 
+class Chain(BaseOperation):
+
+    tokens = ('%chain', '%flatten')
+
+    def __call__(self, stream):
+        return it.chain.from_iterable(stream)
+
+
 class Filter(BaseOperation):
 
     tokens = '%filter',
