@@ -52,6 +52,17 @@ class Accumulate(BaseOperation):
         yield tuple(stream)
 
 
+class Builtin(BaseOperation):
+
+    _mapping = {
+        '%{}'.format(t.__name__): t
+        for t in {dict, list, tuple, set, str, repr}}
+    tokens = tuple(_mapping.keys())
+
+    def __call__(self, stream):
+        return map(self._mapping[self.token], stream)
+
+
 class Chain(BaseOperation):
 
     tokens = ('%chain', '%flatten')
