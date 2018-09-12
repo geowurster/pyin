@@ -137,6 +137,19 @@ class Slice(BaseOperation):
                 return
 
 
+class Stream(BaseOperation):
+
+    tokens = '%stream',
+    kwargs = OrderedDict([('expression', str)])
+
+    def __init__(self, token, expression, **kwargs):
+        self.expression = expression
+        super(Stream, self).__init__(token, **kwargs)
+
+    def __call__(self, stream):
+        return eval(self.expression, self.global_scope, {'stream': stream})
+
+
 for _cls in filter(inspect.isclass, locals().copy().values()):
     if _cls != BaseOperation and issubclass(_cls, BaseOperation):
         for _tkn in _cls.tokens:
