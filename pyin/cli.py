@@ -3,7 +3,9 @@ Commandline interface for pyin
 """
 
 
+import functools
 import itertools as it
+import operator as op
 import os
 import sys
 
@@ -46,6 +48,9 @@ from pyin import _compat
          " 'str.join()'.  By default each item in the output is emitted on"
          " a separate line.  Use an empty string to emit all output on a"
          " single line.")
+@click.option(
+    '--gen', metavar='EXPR',
+    help="Generate input data using an expression.")
 @click.argument(
     'expressions', required=True, nargs=-1)
 @click.pass_context
@@ -53,6 +58,7 @@ def main(
         ctx,
         block,
         expressions,
+        gen,
         infiles,
         keep_input_linesep,
         join,
@@ -111,20 +117,30 @@ def main(
         $ python -c "help('pyin.evaluate')"
     """
 
-    input_stream = it.chain.from_iterable(infiles)
+    if gen and block:
+        raise click.BadParameter("--gen and --block cannot be combined.")
+    elif gen and skip_lines:
+        raise click.BadParameter("--gen and --skip cannot be combined.")
+    elif gen:
+        # The input stream contains a single element so the expression is
+        # evaluated only once.  Leverages existing eval() machinery.  Will
+        # fall apart if the expression references the variable containing
+        # each item.
+        stream = next(pyin.evaluate(gen, [RuntimeError]))
+    else:
+        stream = it.chain.from_iterable(infiles)
+        if not keep_input_linesep:
+            stream = (i.rsplit(os.linesep, 1)[0] for i in stream)
 
+    stream = iter(stream)
     for _ in range(skip_lines):
         try:
-            next(input_stream)
+            next(stream)
         except StopIteration:
             raise click.ClickException("Skipped all input")
 
     if block:
-        stream = [click.get_text_stream('stdin').read()]
-    else:
-        stream = it.chain.from_iterable(infiles)
-        if not keep_input_linesep:
-            stream = (i.rstrip(os.linesep) for i in stream)
+        stream = [functools.reduce(op.iadd, stream)]
 
     for line in pyin.evaluate(expressions, stream):
 

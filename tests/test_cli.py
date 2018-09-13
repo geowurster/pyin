@@ -160,3 +160,12 @@ def test_catch_IOError(path_csv_with_header):
     result = subprocess.check_output(
         "cat {} | pyin line | head -1".format(path_csv_with_header), shell=True)
     assert result.decode().strip() == '"field1","field2","field3"'.strip()
+
+
+def test_gen(runner):
+    result = runner.invoke(pyin.cli.main, [
+        '--gen', "map(lambda x: x ** 2, range(5))",
+        "line"
+    ])
+    assert result.exit_code == 0
+    assert result.output == os.linesep.join((str(i ** 2) for i in range(5)))
