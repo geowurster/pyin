@@ -29,19 +29,35 @@ from pyin import _compat
     '--block', '-b', is_flag=True,
     help="Place all input text into the `line` variable.")
 @click.option(
-    '--no-newline', is_flag=True,
-    help="Don't ensure each line ends with a newline character.")
-@click.option(
     '--skip', 'skip_lines', type=click.IntRange(0), metavar='INTEGER',
     default=0,
     help='Skip N lines in the input text stream before processing.  When '
          'operating in block processing mode the lines are skipped before the '
          'text is converted to a block.  When operating on multiple input '
          'only lines in the first file are skipped.')
+@click.option(
+    '--kis', '--keep-input-linesep', 'keep_input_linesep',
+    is_flag=True, default=False,
+    help="Do not remove line separator from input lines.")
+@click.option(
+    '--join',
+    default=os.linesep, show_default=repr(os.linesep),
+    help="Insert this string between output lines in a manner similar to"
+         " 'str.join()'.  By default each item in the output is emitted on"
+         " a separate line.  Use an empty string to emit all output on a"
+         " single line.")
 @click.argument(
     'expressions', required=True, nargs=-1)
 @click.pass_context
-def main(ctx, infiles, outfile, expressions, no_newline, block, skip_lines):
+def main(
+        ctx,
+        block,
+        expressions,
+        infiles,
+        keep_input_linesep,
+        join,
+        outfile,
+        skip_lines):
 
     """
     It's like sed, but Python!
@@ -104,19 +120,20 @@ def main(ctx, infiles, outfile, expressions, no_newline, block, skip_lines):
             raise click.ClickException("Skipped all input")
 
     if block:
-        iterable = [os.linesep.join((f.read() for f in infiles))]
+        stream = [click.get_text_stream('stdin').read()]
     else:
-        iterable = (l.rstrip(os.linesep) for l in input_stream)
+        stream = it.chain.from_iterable(infiles)
+        if not keep_input_linesep:
+            stream = (i.rstrip(os.linesep) for i in stream)
 
-    for line in pyin.evaluate(expressions, iterable):
+    for line in pyin.evaluate(expressions, stream):
 
         if isinstance(line, _compat.string_types):
             pass
         else:
             line = repr(line)
 
-        if not no_newline and not line.endswith(os.linesep):
-            line += os.linesep
+        line += join
 
         try:
             outfile.write(line)
