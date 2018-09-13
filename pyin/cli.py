@@ -26,7 +26,7 @@ from pyin import _compat
     default='-', show_default=True,
     help="Output text file.  Use '-' for stdout.")
 @click.option(
-    '--block', is_flag=True,
+    '--block', '-b', is_flag=True,
     help="Place all input text into the `line` variable.")
 @click.option(
     '--no-newline', is_flag=True,
