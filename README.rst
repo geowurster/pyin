@@ -123,7 +123,7 @@ Install:
     $ cd pyin
     $ virtualenv venv && source venv/bin/activate
     $ pip install -e .\[dev\]
-    $ py.test tests --cov pyin --cov-report term-missing
+    $ pytest tests --cov pyin --cov-report term-missing
 
 
 License
