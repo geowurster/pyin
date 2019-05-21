@@ -23,7 +23,7 @@ install:
   - pip install -e .\[dev\]
 
 script:
-  - py.test tests --cov pyin --cov-report term-missing
+  - pytest tests --cov pyin --cov-report term-missing
 
 after_success:
   - coveralls || echo "!! intermittent coveralls failure"
