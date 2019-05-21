@@ -46,3 +46,12 @@ def test_floating_point_division():
     result = next(pyin.core.pmap('5 / 3', ['']))
     assert isinstance(result, float)
     assert 1 < result < 2
+
+
+@pytest.mark.parametrize("expression", [
+    'return',  # Evaluates as a statement, not string.
+    ''
+])
+def test_invalid_expression(expression):
+    with pytest.raises(SyntaxError):
+        next(pyin.core.pmap(expression, []))

@@ -8,7 +8,9 @@ from __future__ import division
 import functools
 import itertools
 import operator
+import os
 import re
+import traceback
 from types import GeneratorType
 
 from pyin import _compat
@@ -161,6 +163,8 @@ def pmap(expressions, iterable, var='line'):
 
     if isinstance(expressions, _compat.string_types):
         expressions = expressions,
+    else:
+        expressions = tuple(expressions)
 
     global_scope = {
         'it': itertools,
@@ -170,9 +174,21 @@ def pmap(expressions, iterable, var='line'):
     for expr in expressions:
         global_scope.update(_importer(expr, global_scope))
 
+    compiled_expressions = []
+    for expr in expressions:
+        try:
+            compiled_expressions.append(compile(expr, '<string>', 'eval'))
+        except SyntaxError:
+            raise SyntaxError(
+                "Could not compile expression:"
+                " {expression}{ls}{ls}{traceback}".format(
+                    expression=expr,
+                    ls=os.linesep,
+                    traceback=traceback.format_exc(0)))
+
     for idx, obj in enumerate(iterable):
 
-        for expr in expressions:
+        for expr in compiled_expressions:
 
             result = eval(expr, global_scope, {'idx': idx, var: obj})
 
