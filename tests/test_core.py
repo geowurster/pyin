@@ -18,15 +18,6 @@ def test_single_expr():
         assert 20 <= item <= 80
 
 
-@pytest.mark.skipif(
-    sys.version_info[:2] == (3, 3),
-    reason="Importing in early versions of Python3 is different?")
-def test_importer():
-    out = pyin.core._importer('tests._test_module.function', {})
-    assert out == {'tests': tests}
-    assert out['tests']._test_module.upper('word') == 'WORD'
-
-
 def test_with_map():
     result = list(pyin.core.pmap(
         "list(map(int, line.split('-')))", ['2015-01-01']))
