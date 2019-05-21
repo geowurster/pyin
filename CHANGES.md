@@ -2,6 +2,14 @@ Changelog
 =========
 
 
+Next
+----
+
+- Tested on Python 2.7, 3.5, 3.6, 3.7, and nightly build.  Set appropriate classifiers.
+- [PEP 440](https://www.python.org/dev/peps/pep-0440/)
+- Test on all supported versions of [`click`](https://github.com/pallets/click).
+
+
 0.5.4 (2015-08-03)
 ------------------
 
