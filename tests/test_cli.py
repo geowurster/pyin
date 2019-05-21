@@ -43,17 +43,6 @@ def test_multiple_expr(runner, path_csv_with_header):
     assert result.output.strip() == expected.strip()
 
 
-@pytest.mark.skipif(
-    sys.version_info[:2] == (3, 3),
-    reason="Importing in early versions of Python3 is different?")
-def test_with_imports(runner, csv_with_header_content):
-    result = runner.invoke(pyin.cli.main, [
-        'tests._test_module.upper(line)'
-    ], input=csv_with_header_content)
-    assert result.exit_code == 0
-    assert result.output == csv_with_header_content.upper()
-
-
 def test_with_generator(runner, csv_with_header_content):
     result = runner.invoke(pyin.cli.main, [
         "(i for i in line)"
@@ -116,10 +105,6 @@ def test_skip_all_input(runner, csv_with_header_content):
     assert 'skipped' in result.output.lower()
 
 
-@pytest.mark.skipif(
-    sys.version_info.major == 2,
-    reason="RuntimeError: cannot unmarshal code objects in restricted "
-           "execution mode")
 def test_repr(runner):
 
     text = """
