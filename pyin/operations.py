@@ -6,8 +6,10 @@ import __future__
 import abc
 from collections import OrderedDict
 import inspect
+import itertools as it
+import json
 
-from ._compat import filter
+from ._compat import filter, string_types
 
 
 _TOKEN_CLASS = {}
@@ -59,6 +61,32 @@ class Filter(BaseOperation):
             lambda x: eval(
                 expression, self.global_scope, {'line': x, 'stream': stream}),
             stream)
+
+
+class JSON(BaseOperation):
+
+    """Serialize or deserialize JSON.  If the first item in the stream is a
+    string with a leading '{' or '[', then this operation deserializes.  If
+    the first item is a 'dict', 'list', or 'tuple', then this operation
+    serializes.
+
+    For example, given an input array serialized as JSON, append a value to it
+    and serialize.
+
+        $ pyin --gen '[0, 1]' %json "line + [2]" %json
+        [0, 1, 2]
+    """
+
+    tokens = '%json',
+
+    def __call__(self, stream):
+        first = next(stream)
+        stream = it.chain([first], stream)
+        if isinstance(first, string_types):
+            func = json.loads
+        else:
+            func = json.dumps
+        return map(func, stream)
 
 
 for _cls in filter(inspect.isclass, locals().copy().values()):
