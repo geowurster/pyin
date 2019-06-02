@@ -26,7 +26,7 @@ def test_importer():
 
 
 def test_with_map():
-    result = list(pyin.evaluate.pmap(
+    result = list(pyin.evaluate(
         "list(map(int, line.split('-')))", ['2015-01-01']))
     assert result == [[2015, 1, 1]]
 
@@ -36,12 +36,12 @@ def test_with_map():
 ])
 def test_scope(obj):
     """Make sure specific objects aren't removed from the scope."""
-    for res in pyin.evaluate.pmap(obj, 'word'):
+    for res in pyin.evaluate(obj, 'word'):
         pass
 
 
 def test_floating_point_division():
-    result = next(pyin.evaluate.pmap('5 / 3', ['']))
+    result = next(pyin.evaluate('5 / 3', ['']))
     assert isinstance(result, float)
     assert 1 < result < 2
 
@@ -52,4 +52,4 @@ def test_floating_point_division():
 ])
 def test_invalid_expression(expression):
     with pytest.raises(SyntaxError):
-        next(pyin.evaluate.pmap(expression, []))
+        next(pyin.evaluate(expression, []))

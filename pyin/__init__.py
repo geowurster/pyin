@@ -3,6 +3,12 @@ It's like sed, but Python!
 """
 
 
+from .evaluate import compile, importer, evaluate
+
+
+__all__ = ['compile', 'importer', 'evaluate']
+
+
 __version__ = '0.5.4'
 __author__ = 'Kevin Wurster'
 __email__ = 'wursterk@gmail.com'
