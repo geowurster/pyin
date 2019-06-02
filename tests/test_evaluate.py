@@ -13,7 +13,7 @@ import tests._test_module
 
 
 def test_single_expr():
-    result = list(pyin.evaluate.pmap("20 <= line <= 80", range(100)))
+    result = list(pyin.evaluate(["%filter", "20 <= line <= 80"], range(100)))
     assert len(result) == len(list(range(20, 81)))
     for item in result:
         assert 20 <= item <= 80

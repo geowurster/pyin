@@ -6,10 +6,8 @@ import __future__
 import abc
 from collections import OrderedDict
 import inspect
-import itertools as it
-import json
 
-from ._compat import filter, map, string_types
+from ._compat import filter
 
 
 _TOKEN_CLASS = {}
@@ -41,6 +39,26 @@ class Eval(BaseOperation):
         for item in stream:
             local_scope['line'] = item
             yield eval(expression, global_scope, local_scope)
+
+
+class Filter(BaseOperation):
+
+    tokens = '%filter',
+    kwargs = OrderedDict([('filtexpr', str)])
+    filterfunc = filter
+
+    def __init__(self, filtexpr, **kwargs):
+        self.filtexpr = filtexpr
+        super(Filter, self).__init__(**kwargs)
+
+    def __call__(self, stream):
+        expression = compile(
+            self.filtexpr, '<string>', 'eval',
+            __future__.division.compiler_flag)
+        return self.filterfunc(
+            lambda x: eval(
+                expression, self.global_scope, {'line': x, 'stream': stream}),
+            stream)
 
 
 for _cls in filter(inspect.isclass, locals().copy().values()):
