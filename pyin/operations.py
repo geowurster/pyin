@@ -8,7 +8,6 @@ from collections import OrderedDict
 import inspect
 import itertools as it
 import json
-import sys
 
 from ._compat import filter, string_types
 
@@ -100,35 +99,53 @@ class Chain(BaseOperation):
         return it.chain.from_iterable(stream)
 
 
-class Filter(BaseOperation):
+class Filter(Eval):
+
+    """Execute an expression against every item in the stream and only emit
+    items where the expression evaluates as true.
+    """
 
     tokens = '%filter',
     kwargs = OrderedDict([('filtexpr', str)])
-    filterfunc = filter
+
+    # Indicates if the filter selection should be inverted.  Lets the
+    # FilterFalse() operation subclass.
+    _invert = False
 
     def __init__(self, filtexpr, **kwargs):
+
+        """
+        Parameters
+        ----------
+        filtexpr : str
+            Python expression to execute against each item.
+        kwargs : **kwargs
+            Passed to :obj:`Eval`.
+        """
+
         self.filtexpr = filtexpr
+        kwargs['token'] = filtexpr
         super(Filter, self).__init__(**kwargs)
 
     def __call__(self, stream):
-        expression = compile(
-            self.filtexpr, '<string>', 'eval',
-            __future__.division.compiler_flag)
-        return self.filterfunc(
-            lambda x: eval(
-                expression, self.global_scope, {'line': x, 'stream': stream}),
-            stream)
+
+        results, selection = it.tee(stream, 2)
+        selection = super(Filter, self).__call__(selection)
+
+        # Invert the selection.  Lets the FilterFalse() operation subclass.
+        if self._invert:
+            selection = (not i for i in selection)
+
+        return it.compress(results, selection)
 
 
 class FilterFalse(Filter):
 
-    tokens = ('%filterfalse', '%ff')
+    """Like '%filter' but emits items where the expression evaluates as false.
+    """
 
-    if sys.version_info[0] == 2:
-        def filterfunc(self, key, stream):
-            return filter(lambda x: not key(x), stream)
-    else:
-        filterfunc = it.filterfalse
+    tokens = ('%filterfalse', '%ff')
+    _invert = True
 
 
 class JSON(BaseOperation):
