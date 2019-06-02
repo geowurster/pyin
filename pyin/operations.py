@@ -34,13 +34,42 @@ class BaseOperation(object):
 
 class Eval(BaseOperation):
 
-    def __call__(self, stream):
-        expression = compile(
+    """Execute a Python expression against each item."""
+
+    @property
+    def expression(self):
+        return compile(
             self.token, '<string>', 'eval', __future__.division.compiler_flag)
+
+    def __call__(self, stream):
+
+        """Execute the same expression on each item in the input ``stream``.
+        Expression has access to the standard global scope and a local scope
+        containing:
+
+            _idx
+                Index of ``line`` within the scope of whatever is contained
+                in ``stream``.
+
+            line
+                An object from the input ``stream``.
+
+        In code terms the scope looks like:
+
+            for _idx, line in enumerate(stream):
+                ...
+        """
+
+        # Dotted lookup is not free.
+        expression = self.expression
         global_scope = self.global_scope
         local_scope = {}
-        for item in stream:
-            local_scope['line'] = item
+        update_local_scope = local_scope.update
+
+        for idx, item in enumerate(stream):
+            update_local_scope(
+                _idx=idx,
+                line=item)
             yield eval(expression, global_scope, local_scope)
 
 
