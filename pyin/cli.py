@@ -3,7 +3,6 @@ Commandline interface for pyin
 """
 
 
-import json
 import itertools as it
 import os
 import sys
@@ -113,8 +112,6 @@ def main(ctx, infiles, outfile, expressions, no_newline, block, skip_lines):
 
         if isinstance(line, _compat.string_types):
             pass
-        elif isinstance(line, (list, tuple, dict)):
-            line = json.dumps(line)
         else:
             line = repr(line)
 

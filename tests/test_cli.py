@@ -9,7 +9,6 @@ Unittests for $ pyin
 import json
 import os
 import subprocess
-import sys
 import textwrap
 
 import pytest
@@ -28,7 +27,7 @@ def test_single_expr(runner, csv_with_header_content):
 def test_multiple_expr(runner, path_csv_with_header):
     expected = os.linesep.join((
         '"FIELD1","FIELD2","FIELD3"',
-        '["l2f1,l2f2,l2f3"]',
+        "['l2f1,l2f2,l2f3']",
         '"l3f1","l3f2","l3f3"',
         '"l4f1","l4f2","l4f3"',
         'END'))
@@ -41,6 +40,14 @@ def test_multiple_expr(runner, path_csv_with_header):
     ])
     assert result.exit_code == 0
     assert result.output.strip() == expected.strip()
+
+
+def test_with_imports(runner, csv_with_header_content):
+    result = runner.invoke(pyin.cli.main, [
+        'tests._test_module.upper(line)'
+    ], input=csv_with_header_content)
+    assert result.exit_code == 0
+    assert result.output == csv_with_header_content.upper()
 
 
 def test_with_generator(runner, csv_with_header_content):
@@ -67,7 +74,8 @@ def test_block_mode(runner):
     result = runner.invoke(pyin.cli.main, [
         "--block",
         "json.loads(line)",
-        "{k: v for k, v in line.items() if int(k) in range(5)}"
+        "{k: v for k, v in line.items() if int(k) in range(5)}",
+        "%json"
     ], input=text)
     assert result.exit_code == 0
 
