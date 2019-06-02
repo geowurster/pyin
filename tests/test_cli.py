@@ -167,5 +167,10 @@ def test_gen(runner):
         '--gen', "map(lambda x: x ** 2, range(5))",
         "line"
     ])
+
+    # Note the extra linesep tacked on the end.  Unless specified otherwise
+    # pyin ensures each line includes a trailing linesep.
+    expected = os.linesep.join((str(i ** 2) for i in range(5))) + os.linesep
+
     assert result.exit_code == 0
-    assert result.output == os.linesep.join((str(i ** 2) for i in range(5)))
+    assert result.output == expected
