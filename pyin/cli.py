@@ -1,8 +1,7 @@
-"""
-Commandline interface for pyin
-"""
+"""Commandline interface for ``pyin``."""
 
 
+import errno
 import functools
 import itertools as it
 import operator as op
@@ -42,7 +41,7 @@ from pyin import _compat
     is_flag=True, default=False,
     help="Do not remove line separator from input lines.")
 @click.option(
-    '--join',
+    '--end',
     default=os.linesep, show_default=repr(os.linesep),
     help="Insert this string between output lines in a manner similar to"
          " 'str.join()'.  By default each item in the output is emitted on"
@@ -53,15 +52,13 @@ from pyin import _compat
     help="Generate input data using an expression.")
 @click.argument(
     'expressions', required=True, nargs=-1)
-@click.pass_context
 def main(
-        ctx,
         block,
         expressions,
         gen,
         infiles,
         keep_input_linesep,
-        join,
+        end,
         outfile,
         skip_lines):
 
@@ -140,7 +137,7 @@ def main(
             raise click.ClickException("Skipped all input")
 
     if block:
-        stream = [functools.reduce(op.iadd, stream)]
+        stream = ''.join(stream)
 
     for line in pyin.evaluate(expressions, stream):
 
@@ -149,12 +146,12 @@ def main(
         else:
             line = repr(line)
 
-        line += join
+        line += end
 
         try:
             outfile.write(line)
         except IOError as e:
-            if sys.version_info.major == 2 and 'broken pipe' in str(e).lower():
-                ctx.exit()
+            if sys.version_info.major == 2 and e.errno == errno.EPIPE:
+                return
             else:  # pragma no cover
                 raise
