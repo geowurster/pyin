@@ -6,19 +6,21 @@ Core components for pyin
 from __future__ import division, print_function
 
 import functools
-import itertools
-import operator
+import itertools as it
+import operator as op
 import re
 import sys
 from types import GeneratorType
 
 from pyin import _compat
+from pyin.base import BaseOperation
 from pyin.exceptions import CompileError
 
 
 __all__ = ['pmap']
 
 
+_DEFAULT_VARIABLE = 'line'
 _IMPORTER_REGEX = re.compile(r"([a-zA-Z_.][a-zA-Z0-9_.]*)")
 
 
@@ -72,7 +74,7 @@ def _normalize_expressions(f):
 
     @functools.wraps(f)
     def inner(expressions, *args, **kwargs):
-        if isinstance(expressions, _compat.string_types):
+        if isinstance(expressions, (_compat.string_types, BaseOperation)):
             expressions = expressions,
 
         strings = [isinstance(i, _compat.string_types) for i in expressions]
@@ -84,6 +86,72 @@ def _normalize_expressions(f):
         return f(expressions, *args, **kwargs)
 
     return inner
+
+
+@_normalize_expressions
+def compile(expressions, variable=_DEFAULT_VARIABLE, scope=None):
+
+    """Parse expressions and compile into a sequence of operations.
+
+    Parameters
+    ----------
+    expressions : sequence
+        Of string expressions and directives.
+
+    Returns
+    ------
+    tuple
+        Of :py:class`BaseOperation` subclassers.
+    """
+
+    # Avoid a circular import
+    from pyin import operations
+
+    # Parse expressions and construct a pipeline
+    out = []
+    expressions = list(expressions)
+    while expressions:
+
+        directive = expressions.pop(0)
+
+        # String is a token that requires special processing
+        if directive in operations._DIRECTIVE_TO_CLASS:
+            cls = operations._DIRECTIVE_TO_CLASS[directive]
+
+        elif directive.startswith(operations._DIRECTIVE_CHARACTER):
+            raise CompileError("unrecognized directive: {}".format(directive))
+
+        # String is an expression that can be passed to eval.
+        else:
+            cls = operations.Eval
+
+        kwargs = {
+            name: cast(expressions.pop(0))
+            for name, cast in cls.kwargs.items()}
+
+        out.append(cls(
+            directive=directive,
+            variable=variable,
+            global_scope=scope,
+            **kwargs))
+
+    return tuple(out)
+
+
+def default_scope():
+
+    """Default global scope for expression evaluation."""
+
+    return {
+        'filter': _compat.filter,
+        'it': it,
+        'itertools': it,
+        'map': _compat.map,
+        'op': op,
+        'operator': op,
+        'range': _compat.range,
+        'reduce': functools.reduce
+    }
 
 
 @_normalize_expressions
@@ -105,7 +173,7 @@ def importer(expressions, scope=None):
     scope = scope or {}
 
     # Find all potential modules to try and import
-    all_matches = set(itertools.chain.from_iterable(
+    all_matches = set(it.chain.from_iterable(
         re.findall(_IMPORTER_REGEX, expr) for expr in expressions))
 
     for match in all_matches:
@@ -124,7 +192,7 @@ def importer(expressions, scope=None):
 
         # Shouldn't hit this
         else:
-            raise ImportError("Error importing from: {}".format(m))
+            raise ImportError("Error importing from: {}".format(match))
 
         # Are you trying to figure out why relative imports don't work?
         # If so, the issue is probably `m.split()` producing ['', 'name']
@@ -145,7 +213,7 @@ def importer(expressions, scope=None):
 
 
 @_normalize_expressions
-def pmap(expressions, iterable, var='line'):
+def pmap(expressions, iterable, var=_DEFAULT_VARIABLE, scope=None):
 
     """
     Like `map()` but with `eval()` and multiple Python expressions.
@@ -246,27 +314,19 @@ def pmap(expressions, iterable, var='line'):
         during processing.
     """
 
-    if isinstance(expressions, _compat.string_types):
-        expressions = expressions,
-    else:
-        expressions = tuple(expressions)
+    scope = scope or default_scope()
 
-    global_scope = {
-        'it': itertools,
-        'op': operator,
-        'reduce': functools.reduce}
-
-    global_scope = importer(expressions, global_scope)
-
-    compiled_expressions = []
-    for expr in expressions:
-        compiled_expressions.append(_compile_wrapper(expr, 'eval'))
+    scope = importer(expressions, scope)
+    compiled_expressions = compile(
+        expressions,
+        variable=var,
+        scope=scope)
 
     for idx, obj in enumerate(iterable):
 
         for expr in compiled_expressions:
 
-            result = eval(expr, global_scope, {'idx': idx, var: obj})
+            result = next(expr([obj]))
 
             # Got a generator.  Expand and continue.
             if isinstance(result, GeneratorType):
