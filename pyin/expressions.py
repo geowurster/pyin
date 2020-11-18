@@ -10,7 +10,6 @@ import itertools as it
 import operator as op
 import re
 import sys
-from types import GeneratorType
 
 from pyin import _compat
 from pyin.base import BaseOperation
@@ -322,28 +321,8 @@ def pmap(expressions, iterable, var=_DEFAULT_VARIABLE, scope=None):
         variable=var,
         scope=scope)
 
-    for idx, obj in enumerate(iterable):
+    for func in compiled_expressions:
+        iterable = func(iterable)
 
-        for expr in compiled_expressions:
-
-            result = next(expr([obj]))
-
-            # Result is some object.  Pass it back in under `var`.
-            if not isinstance(result, bool):
-                obj = result
-
-            # Result is True/False.  Only continue if True.
-            # Have to explicitly let string_types through for ''
-            # which would otherwise be ignored.
-            elif isinstance(result, _compat.string_types) or result:
-                continue
-
-            # Got something else?  Halt processing for this obj.
-            else:
-                obj = None
-                break
-
-        # Have to explicitly let string_types through for ''
-        # which would otherwise be ignored.
-        if isinstance(obj, _compat.string_types) or obj:
-            yield obj
+    for result in iterable:
+        yield result

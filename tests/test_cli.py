@@ -35,7 +35,7 @@ def test_multiple_expr(runner, path_csv_with_header):
     result = runner.invoke(pyin.cli.main, [
         '-i', path_csv_with_header,
         "line.upper() if 'field' in line else line",
-        "'l1' not in line",
+        "%filter", "'l1' not in line",
         "line.replace('\"', '').split() if 'l2' in line else line",
         "'END' if 'l5' in line else line"
     ])
@@ -116,7 +116,7 @@ def test_repr(runner):
     result = runner.invoke(pyin.cli.main, [
         "line.strip()",
         "datetime.datetime.strptime(line, '%Y-%m-%d')",
-        "isinstance(line, datetime.datetime)"
+        "%filter", "isinstance(line, datetime.datetime)"
     ], input=text)
 
     assert result.exit_code == 0
