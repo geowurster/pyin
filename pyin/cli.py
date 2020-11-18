@@ -11,7 +11,7 @@ import sys
 import click
 
 import pyin
-import pyin.core
+import pyin.expressions
 from pyin import _compat
 
 
@@ -91,9 +91,9 @@ def main(ctx, infiles, outfile, expressions, no_newline, block, skip_lines):
 
     \b
     For a more in-depth explanation about exactly what's going on under the
-    hood, see the the docstring in 'pyin.core.pmap()':
+    hood, see the the docstring in 'pyin.expressions.pmap()':
     \b
-        $ python -c "help('pyin.core.pmap')"
+        $ python -c "help('pyin.expressions.pmap')"
     """
 
     input_stream = it.chain.from_iterable(infiles)
@@ -109,7 +109,7 @@ def main(ctx, infiles, outfile, expressions, no_newline, block, skip_lines):
     else:
         iterable = (l.rstrip(os.linesep) for l in input_stream)
 
-    for line in pyin.core.pmap(expressions, iterable):
+    for line in pyin.expressions.pmap(expressions, iterable):
 
         if isinstance(line, _compat.string_types):
             pass

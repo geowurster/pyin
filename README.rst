@@ -20,7 +20,7 @@ Command Line Interface
 ======================
 
 This project is intended to be used from the included utility ``pyin``, although
-the underlying ``pyin.core.pmap()`` function could be used elsewhere with
+the underlying ``pyin.expressions.pmap()`` function could be used elsewhere with
 non-string objects.
 
 .. code-block:: console
@@ -65,9 +65,9 @@ non-string objects.
           > "line.replace('\r\n', os.newline)"
 
       For a more in-depth explanation about exactly what's going on under the
-      hood, see the the docstring in 'pyin.core.pmap()':
+      hood, see the the docstring in 'pyin.expressions.pmap()':
 
-          $ python -c "help('pyin.core.pmap')"
+          $ python -c "help('pyin.expressions.pmap')"
 
     Options:
       --version           Show the version and exit.
