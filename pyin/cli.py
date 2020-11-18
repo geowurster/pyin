@@ -91,9 +91,9 @@ def main(ctx, infiles, outfile, expressions, no_newline, block, skip_lines):
 
     \b
     For a more in-depth explanation about exactly what's going on under the
-    hood, see the the docstring in 'pyin.expressions.pmap()':
+    hood, see the the docstring in 'pyin.expressions.evaluate()':
     \b
-        $ python -c "help('pyin.expressions.pmap')"
+        $ python -c "help('pyin.expressions.evaluate')"
     """
 
     input_stream = it.chain.from_iterable(infiles)
@@ -109,7 +109,7 @@ def main(ctx, infiles, outfile, expressions, no_newline, block, skip_lines):
     else:
         iterable = (l.rstrip(os.linesep) for l in input_stream)
 
-    for line in pyin.expressions.pmap(expressions, iterable):
+    for line in pyin.expressions.evaluate(expressions, iterable):
 
         if isinstance(line, _compat.string_types):
             pass
