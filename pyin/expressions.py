@@ -328,12 +328,8 @@ def pmap(expressions, iterable, var=_DEFAULT_VARIABLE, scope=None):
 
             result = next(expr([obj]))
 
-            # Got a generator.  Expand and continue.
-            if isinstance(result, GeneratorType):
-                obj = list(result)
-
             # Result is some object.  Pass it back in under `var`.
-            elif not isinstance(result, bool):
+            if not isinstance(result, bool):
                 obj = result
 
             # Result is True/False.  Only continue if True.

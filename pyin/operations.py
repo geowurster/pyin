@@ -48,6 +48,17 @@ class Eval(BaseOperation):
                     sys.exc_info()[2])
 
 
+class List(BaseOperation):
+
+    """Call ``list()`` on every item."""
+
+    directives = ('%list',)
+
+    def __call__(self, stream):
+        for item in stream:
+            yield list(item)
+
+
 for _cls in filter(inspect.isclass, locals().copy().values()):
     if _cls != BaseOperation and issubclass(_cls, BaseOperation):
         for _d in _cls.directives:
