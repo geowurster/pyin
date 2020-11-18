@@ -3,23 +3,65 @@ Core components for pyin
 """
 
 
-from __future__ import division
+from __future__ import division, print_function
 
 import functools
 import itertools
 import operator
-import os
 import re
-import traceback
+import sys
 from types import GeneratorType
 
 from pyin import _compat
+from pyin.exceptions import CompileError
 
 
 __all__ = ['pmap']
 
 
 _IMPORTER_REGEX = re.compile(r"([a-zA-Z_.][a-zA-Z0-9_.]*)")
+
+
+# This gets overloaded later
+_builtin_compile = compile
+def _compile_wrapper(code, mode='eval'):
+
+    """Wraps the builtin ``compile()`` and translates ``SyntaxError``, which
+    is surprisingly difficult to catch, to a more appropriate exception.
+
+    Parameters
+    ==========
+    code : str
+        Code snippet to compile.
+    mode : str
+        Tells ``compile()`` to compile code in this mode.
+
+    Raises
+    ======
+    CompileError
+        If ``code`` could not be compiled.
+
+    Returns
+    =======
+    code
+        See builtin ``compile()``.
+    """
+
+    try:
+        return _builtin_compile(
+            code,
+            '<string>',
+            mode,
+            division.compiler_flag | print_function.compiler_flag)
+
+    # Trying to catch with 'except SyntaxError as e' just leads to an
+    # undefined variable 'e'.
+    except SyntaxError:
+        _, exc_value, exc_traceback = sys.exc_info()
+        _compat.reraise(
+            CompileError,
+            CompileError.from_syntax_error(exc_value),
+            exc_traceback)
 
 
 def importer(expressions, scope=None):
@@ -194,15 +236,7 @@ def pmap(expressions, iterable, var='line'):
 
     compiled_expressions = []
     for expr in expressions:
-        try:
-            compiled_expressions.append(compile(expr, '<string>', 'eval'))
-        except SyntaxError:
-            raise SyntaxError(
-                "Could not compile expression:"
-                " {expression}{ls}{ls}{traceback}".format(
-                    expression=expr,
-                    ls=os.linesep,
-                    traceback=traceback.format_exc(0)))
+        compiled_expressions.append(_compile_wrapper(expr, 'eval'))
 
     for idx, obj in enumerate(iterable):
 

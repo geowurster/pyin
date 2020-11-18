@@ -1,12 +1,10 @@
 """Tests for ``pyin.expressions``"""
 
 
-import sys
-
 import pytest
 
 import pyin.expressions
-import tests._test_module
+from pyin.exceptions import CompileError
 
 
 def test_single_expr():
@@ -42,5 +40,5 @@ def test_floating_point_division():
     ''
 ])
 def test_invalid_expression(expression):
-    with pytest.raises(SyntaxError):
+    with pytest.raises(CompileError):
         next(pyin.expressions.pmap(expression, []))
