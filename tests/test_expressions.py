@@ -3,19 +3,19 @@
 
 import pytest
 
-import pyin.expressions
+import pyin
 from pyin.exceptions import CompileError
 
 
 def test_single_expr():
-    result = list(pyin.expressions.pmap(["%filter", "20 <= line <= 80"], range(100)))
+    result = list(pyin.evaluate(["%filter", "20 <= line <= 80"], range(100)))
     assert len(result) == len(list(range(20, 81)))
     for item in result:
         assert 20 <= item <= 80
 
 
 def test_with_map():
-    result = list(pyin.expressions.pmap(
+    result = list(pyin.evaluate(
         "list(map(int, line.split('-')))", ['2015-01-01']))
     assert result == [[2015, 1, 1]]
 
@@ -25,12 +25,12 @@ def test_with_map():
 ])
 def test_scope(obj):
     """Make sure specific objects aren't removed from the scope."""
-    for res in pyin.expressions.pmap(obj, 'word'):
+    for res in pyin.evaluate(obj, 'word'):
         pass
 
 
 def test_floating_point_division():
-    result = next(pyin.expressions.pmap('5 / 3', ['']))
+    result = next(pyin.evaluate('5 / 3', ['']))
     assert isinstance(result, float)
     assert 1 < result < 2
 
@@ -41,4 +41,4 @@ def test_floating_point_division():
 ])
 def test_invalid_expression(expression):
     with pytest.raises(CompileError):
-        next(pyin.expressions.pmap(expression, []))
+        next(pyin.evaluate(expression, []))
