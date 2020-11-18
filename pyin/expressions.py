@@ -19,42 +19,59 @@ from pyin import _compat
 __all__ = ['pmap']
 
 
-def _importer(expressions, scope):
+_IMPORTER_REGEX = re.compile(r"([a-zA-Z_.][a-zA-Z0-9_.]*)")
 
-    """
-    Parse expressions and import modules into a scope.
+
+def importer(expressions, scope=None):
+
+    """Parse expressions and import modules into a single scope.
+
+    Parameters
+    ----------
+    expressions : str or sequence
+        Single expression or sequence of expressions.
+
+    Returns
+    -------
+    OrderedDict
+        Mapping between expressions and scopes.
     """
 
+    scope = scope or {}
+
+    # Find all potential modules to try and import
     all_matches = set(itertools.chain.from_iterable(
-        re.findall(re.compile(r"([a-zA-Z_.][a-zA-Z0-9_.]*)"), expr)
-        for expr in expressions))
-    for m in all_matches:
+        re.findall(_IMPORTER_REGEX, expr) for expr in expressions))
 
-        split = m.split('.', 1)
+    for match in all_matches:
 
-        # Like: json.loads(line)
+        split = match.split('.', 1)
+
+        # Like: json.loads()
         if len(split) == 1:
             module = split[0]
             other = []
-        # Like: tests.module.upper(line)
+
+        # Like: os.path.join()
         elif len(split) == 2:
             module, other = split
             other = [other]
-        # Shouldn't hit this
-        else:  # pragma no cover
-            raise RuntimeError("Error importing: {}".format(m))
 
-        # Are you trying to figure out why relative imports don't work?  If so,
-        # the issue is probably `m.split()` producing ['', 'name'] instead of
-        # ['.name'].  `__import__('.name')__` doesn't appear to work though,
-        # so good luck!
+        # Shouldn't hit this
+        else:
+            raise ImportError("Error importing from: {}".format(m))
+
+        # Are you trying to figure out why relative imports don't work?
+        # If so, the issue is probably `m.split()` producing ['', 'name']
+        # instead of ['.name']. `__import__('.name')__` doesn't appear
+        # to work though, so good luck!
         if not module:
             continue
 
         try:
             scope[module] = __import__(
                 module,
-                fromlist=list(map(str, other)),  # Python 2 can't handle unicode
+                fromlist=list(map(str, other)),
                 level=0)
         except ImportError:
             pass
@@ -173,7 +190,7 @@ def pmap(expressions, iterable, var='line'):
         'op': operator,
         'reduce': functools.reduce}
 
-    global_scope = _importer(expressions, global_scope)
+    global_scope = importer(expressions, global_scope)
 
     compiled_expressions = []
     for expr in expressions:
