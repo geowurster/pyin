@@ -19,14 +19,16 @@ from pyin import _compat
 __all__ = ['pmap']
 
 
-def _importer(string, scope):
+def _importer(expressions, scope):
 
     """
     Parse expressions and import modules into a scope.
     """
 
-    matches = set(re.findall("([a-zA-Z_.][a-zA-Z0-9_.]*)", string))
-    for m in matches:
+    all_matches = set(itertools.chain.from_iterable(
+        re.findall(re.compile(r"([a-zA-Z_.][a-zA-Z0-9_.]*)"), expr)
+        for expr in expressions))
+    for m in all_matches:
 
         split = m.split('.', 1)
 
@@ -171,8 +173,7 @@ def pmap(expressions, iterable, var='line'):
         'op': operator,
         'reduce': functools.reduce}
 
-    for expr in expressions:
-        global_scope.update(_importer(expr, global_scope))
+    global_scope = _importer(expressions, global_scope)
 
     compiled_expressions = []
     for expr in expressions:
