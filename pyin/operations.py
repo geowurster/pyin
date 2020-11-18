@@ -3,6 +3,8 @@
 
 from __future__ import division, print_function
 
+from collections import OrderedDict
+import itertools as it
 import inspect
 import sys
 
@@ -23,13 +25,14 @@ class Eval(BaseOperation):
     directives = ('%eval',)
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.expr = _compile_wrapper(self.directive, mode='eval')
+        super(Eval, self).__init__(*args, **kwargs)
+        self.expr = self.directive
+        self.compiled_expr = _compile_wrapper(self.expr, mode='eval')
 
     def __call__(self, stream):
 
         # Attribute lookup is not free
-        expr = self.expr
+        expr = self.compiled_expr
         variable = self.variable
         global_scope = self.global_scope
 
@@ -46,6 +49,30 @@ class Eval(BaseOperation):
                     EvaluateError,
                     EvaluateError(msg),
                     sys.exc_info()[2])
+
+
+class Filter(Eval):
+
+    """Filter items against an expression."""
+
+    directives = ('%filter', '%filt')
+    kwargs = OrderedDict([('expr', str)])
+
+    def __init__(self, directive, variable, global_scope, expr):
+
+        """
+        Parameters
+        ==========
+        expr : str
+            Expression to evaluate as true/false.
+        """
+        super(Filter, self).__init__(expr, variable=variable, global_scope=global_scope)
+        self.directive = directive
+
+    def __call__(self, stream):
+        stream, selection = it.tee(stream, 2)
+        selection = super(Filter, self).__call__(selection)
+        return it.compress(stream, selection)
 
 
 class List(BaseOperation):
