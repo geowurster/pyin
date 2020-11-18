@@ -16,7 +16,7 @@ from pyin.base import BaseOperation
 from pyin.exceptions import CompileError
 
 
-__all__ = ['compile', 'importer', 'evaluate']
+__all__ = ['compile', 'generate', 'importer', 'evaluate']
 
 
 _DEFAULT_VARIABLE = 'line'
@@ -247,3 +247,33 @@ def evaluate(expressions, stream, variable=_DEFAULT_VARIABLE, scope=None):
 
     for item in stream:
         yield item
+
+
+def generate(expression):
+
+    """Evaluate an expression in a mode more limited than ``evaluate()`` where
+    its output is returned.
+
+    Parameters
+    ==========
+    expression : str or pyin.BaseExpression
+        Expression to evaluate.
+
+    Returns
+    =======
+    object
+        Evaluated expression.
+    """
+
+    if isinstance(expression, _compat.string_types):
+        expressions = compile([expression])
+    else:
+        expressions = [expression]
+
+    stream = evaluate(
+        expressions,
+        [object],     # Need something to iterate over
+        variable='_'  # Obfuscate the scope a bit
+    )
+
+    return next(stream)
