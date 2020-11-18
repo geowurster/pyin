@@ -64,6 +64,29 @@ def _compile_wrapper(code, mode='eval'):
             exc_traceback)
 
 
+def _normalize_expressions(f):
+
+    """Decorator for ensuring a single expression or sequence of multiple
+    expressions can be given.
+    """
+
+    @functools.wraps(f)
+    def inner(expressions, *args, **kwargs):
+        if isinstance(expressions, _compat.string_types):
+            expressions = expressions,
+
+        strings = [isinstance(i, _compat.string_types) for i in expressions]
+        if any(strings) and not all(strings):
+            raise TypeError(
+                "found a mix of string expressions and operation classes"
+                " - input must be homogeneous")
+
+        return f(expressions, *args, **kwargs)
+
+    return inner
+
+
+@_normalize_expressions
 def importer(expressions, scope=None):
 
     """Parse expressions and import modules into a single scope.
@@ -121,6 +144,7 @@ def importer(expressions, scope=None):
     return scope
 
 
+@_normalize_expressions
 def pmap(expressions, iterable, var='line'):
 
     """
