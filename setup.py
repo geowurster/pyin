@@ -52,7 +52,7 @@ setup(
     description="It's like sed, but Python!",
     entry_points="""
         [console_scripts]
-        pyin=pyin.cli:main
+        pyin=pyin.__main__:cli_entrypoint
     """,
     extras_require={
         'dev': [
@@ -61,9 +61,6 @@ setup(
         ]
     },
     include_package_data=True,
-    install_requires=[
-        'click>=3',
-    ],
     license="New BSD",
     long_description=readme_content,
     packages=find_packages(exclude=['tests']),

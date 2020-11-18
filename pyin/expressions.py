@@ -265,13 +265,8 @@ def generate(expression):
         Evaluated expression.
     """
 
-    if isinstance(expression, _compat.string_types):
-        expressions = compile([expression])
-    else:
-        expressions = [expression]
-
     stream = evaluate(
-        expressions,
+        [expression],
         [object],     # Need something to iterate over
         variable='_'  # Obfuscate the scope a bit
     )
