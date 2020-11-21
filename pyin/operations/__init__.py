@@ -36,6 +36,7 @@ def _init():
         "pyin.operations.csv",
         "pyin.operations.eval",
         "pyin.operations.filter",
+        "pyin.operations.iter",
         "pyin.operations.json",
         "pyin.operations.stream"
     )
