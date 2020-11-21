@@ -7,7 +7,7 @@ import argparse
 import os
 import sys
 
-from pyin import _compat, compile, evaluate, generate, expressions
+from pyin import _compat, evaluate, generate, expressions
 from pyin.exceptions import CLIError, CompileError, EvaluateError
 
 
@@ -120,14 +120,16 @@ def main(
         Exit code.
     """
 
+    # Safety check for anyone using main() directly
     if infile.isatty():
-        raise CLIError(
-            "interactive stdin not supported - use '--gen' instead")
+        raise argparse.ArgumentError(
+            None, "interactive stdin not supported - use '--gen' instead")
 
     # Cannot fully validate this in the parser without having to deal with
     # opening the file.
     if generate_expr is not None and not infile.isatty():
-        raise CLIError("cannot combine '--gen' with piping data to stdin")
+        raise argparse.ArgumentError(
+            None, "cannot combine '--gen' with piping data to stdin")
 
     # Generating data for input. Must also handle '--block'.
     elif generate_expr is not None:
@@ -167,9 +169,17 @@ def main(
 
 
 def cli_entrypoint():
-    ns = parser().parse_args()
+    p = parser()
+    ns = p.parse_args()
+
     try:
         ecode = main(**vars(ns))
+    except argparse.ArgumentError as e:
+        if 'interactive stdin' in e.message:
+            p.print_usage()
+            exit()
+        else:
+            p.error(e.message)
     except (CLIError, CompileError, EvaluateError) as e:
         ecode = 1
         print("ERROR: {}".format(e), file=sys.stderr)
