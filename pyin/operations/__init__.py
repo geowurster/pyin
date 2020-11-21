@@ -33,6 +33,7 @@ def _init():
 
     modules = (
         "pyin.operations.builtins",
+        "pyin.operations.csv",
         "pyin.operations.eval",
         "pyin.operations.filter",
         "pyin.operations.json"
