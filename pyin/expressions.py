@@ -13,7 +13,6 @@ import re
 import sys
 
 from pyin import _compat
-from pyin.base import BaseOperation
 from pyin.exceptions import CompileError
 
 
@@ -74,6 +73,9 @@ def _normalize_expressions(f):
 
     @functools.wraps(f)
     def inner(expressions, *args, **kwargs):
+
+        from pyin.operations import BaseOperation
+
         if isinstance(expressions, (_compat.string_types, BaseOperation)):
             expressions = expressions,
 
@@ -104,8 +106,8 @@ def compile(expressions, variable=_DEFAULT_VARIABLE, scope=None):
         Of :py:class`BaseOperation` subclassers.
     """
 
-    # Avoid a circular import
     from pyin import operations
+    import pyin.operations.eval
 
     # Parse expressions and construct a pipeline
     out = []
@@ -115,15 +117,15 @@ def compile(expressions, variable=_DEFAULT_VARIABLE, scope=None):
         directive = expressions.pop(0)
 
         # String is a token that requires special processing
-        if directive in operations._DIRECTIVE_TO_CLASS:
-            cls = operations._DIRECTIVE_TO_CLASS[directive]
+        if directive in operations._REGISTRY:
+            cls = operations._REGISTRY[directive]
 
         elif directive.startswith(operations._DIRECTIVE_CHARACTER):
             raise CompileError("unrecognized directive: {}".format(directive))
 
         # String is an expression that can be passed to eval.
         else:
-            cls = operations.Eval
+            cls = operations.eval.Eval
 
         kwargs = {
             name: cast(expressions.pop(0))
