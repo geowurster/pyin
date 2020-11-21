@@ -34,7 +34,8 @@ def _init():
     modules = (
         "pyin.operations.builtins",
         "pyin.operations.eval",
-        "pyin.operations.filter"
+        "pyin.operations.filter",
+        "pyin.operations.json"
     )
 
     for module in map(importlib.import_module, modules):
