@@ -36,7 +36,8 @@ def _init():
         "pyin.operations.csv",
         "pyin.operations.eval",
         "pyin.operations.filter",
-        "pyin.operations.json"
+        "pyin.operations.json",
+        "pyin.operations.stream"
     )
 
     for module in map(importlib.import_module, modules):
