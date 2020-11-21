@@ -3,14 +3,14 @@ It's like sed, but Python!
 """
 
 
-__version__ = '0.5.4'
+__version__ = '1.0'
 __author__ = 'Kevin Wurster'
 __email__ = 'wursterk@gmail.com'
 __source__ = 'https://github.com/geowurster/pyin'
 __license__ = '''
 New BSD License
 
-Copyright (c) 2015-2016, Kevin D. Wurster
+Copyright (c) 2015-2020, Kevin D. Wurster
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
