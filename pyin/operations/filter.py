@@ -8,7 +8,9 @@ class Filter(Eval):
 
     """Filter items against an expression."""
 
-    directives = ('%filter', '%filt')
+    directives = (
+        '%filter', '%filt',
+        '%filterfalse', '%ff')
     kwargs = OrderedDict([('expr', str)])
 
     def __init__(self, directive, variable, global_scope, expr):
@@ -25,4 +27,8 @@ class Filter(Eval):
     def __call__(self, stream):
         stream, selection = it.tee(stream, 2)
         selection = super(Filter, self).__call__(selection)
+
+        if self.directive in ('%filterfalse', '%ff'):
+            selection = (not s for s in selection)
+
         return it.compress(stream, selection)
