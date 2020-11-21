@@ -17,7 +17,7 @@ import pytest
 
 def test_single_expr(runner, csv_with_header_content):
     result = runner.invoke([
-        "line.upper()"
+        "i.upper()"
     ], input=csv_with_header_content)
     assert result.exit_code == 0
     assert result.output.strip() == csv_with_header_content.upper().strip()
@@ -33,8 +33,8 @@ def test_multiple_expr(runner, path_csv_with_header):
         "0l5f10,0l5f20,0l5f30"))
     result = runner.invoke([
         '-i', path_csv_with_header,
-        "line.upper() if 'field' in line else line",
-        "line.replace('\"', '0')"
+        "i.upper() if 'field' in i else i",
+        "i.replace('\"', '0')"
     ])
     assert result.exit_code == 0
     assert result.output.strip() == expected.strip()
@@ -42,7 +42,7 @@ def test_multiple_expr(runner, path_csv_with_header):
 
 def test_with_generator(runner, csv_with_header_content):
     result = runner.invoke([
-        "(i for i in line)"
+        "(j for j in i)"
     ], input=csv_with_header_content)
     assert result.exit_code == 0
     assert os.linesep.join(
@@ -51,7 +51,7 @@ def test_with_generator(runner, csv_with_header_content):
 
 def test_with_blank_lines(runner):
     result = runner.invoke([
-        'line'
+        'i'
     ], input="")
     assert result.exit_code == 0
     assert result.output == ''
@@ -63,9 +63,9 @@ def test_block_mode(runner):
 
     result = runner.invoke([
         "--block",
-        "json.loads(line)",
-        "{k: v for k, v in line.items() if int(k) in range(5)}",
-        "json.dumps(line)"
+        "json.loads(i)",
+        "{k: v for k, v in i.items() if int(k) in range(5)}",
+        "json.dumps(i)"
     ], input=text)
     assert result.exit_code == 0
 
@@ -78,7 +78,7 @@ def test_unicode(runner):
 
     text = u"""Héllö"""
     result = runner.invoke([
-        'line.upper()'
+        'i.upper()'
     ], input=text)
     assert result.exit_code == 0
     assert result.output.strip() == text.strip().upper()
@@ -88,7 +88,7 @@ def test_unicode(runner):
 def test_skip_single_line(runner, skip_lines, csv_with_header_content):
     result = runner.invoke([
         '--skip', str(skip_lines),
-        'line'
+        'i'
     ], input=csv_with_header_content)
     assert result.exit_code == 0
     expected = os.linesep.join(csv_with_header_content.splitlines()[skip_lines:])
@@ -98,7 +98,7 @@ def test_skip_single_line(runner, skip_lines, csv_with_header_content):
 def test_skip_all_input(runner, csv_with_header_content):
     result = runner.invoke([
         '--skip', '100',
-        'line'
+        'i'
     ], input=csv_with_header_content)
     assert result.exit_code == 0
     assert result.output == ''
@@ -113,9 +113,9 @@ def test_repr(runner):
     """.strip()
 
     result = runner.invoke([
-        "line.strip()",
-        "datetime.datetime.strptime(line, '%Y-%m-%d')",
-        "%filter", "isinstance(line, datetime.datetime)"
+        "i.strip()",
+        "datetime.datetime.strptime(i, '%Y-%m-%d')",
+        "%filter", "isinstance(i, datetime.datetime)"
     ], input=text)
 
     assert result.exit_code == 0
@@ -133,5 +133,5 @@ def test_catch_IOError(path_csv_with_header):
     """
 
     result = subprocess.check_output(
-        "cat {} | pyin line | head -1".format(path_csv_with_header), shell=True)
+        "cat {} | pyin i | head -1".format(path_csv_with_header), shell=True)
     assert result.decode().strip() == '"field1","field2","field3"'.strip()

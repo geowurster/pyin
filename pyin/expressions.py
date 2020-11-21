@@ -19,7 +19,7 @@ from pyin.exceptions import CompileError
 __all__ = ['compile', 'generate', 'importer', 'evaluate']
 
 
-_DEFAULT_VARIABLE = 'line'
+_DEFAULT_VARIABLE = 'i'
 _IMPORTER_REGEX = re.compile(r"([a-zA-Z_.][a-zA-Z0-9_.]*)")
 
 
