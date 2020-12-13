@@ -4,6 +4,7 @@
 from __future__ import print_function
 
 import argparse
+import errno
 import os
 import sys
 
@@ -152,15 +153,29 @@ def main(
     if not expressions:
         expressions = ["{}".format(variable)]
 
-    results = evaluate(expressions, stream, variable=variable)
-    for idx, line in enumerate(results):
+    try:
+        results = evaluate(expressions, stream, variable=variable)
+        for idx, line in enumerate(results):
 
-        if not isinstance(line, _compat.string_types):
-            line = repr(line)
+            if not isinstance(line, _compat.string_types):
+                line = repr(line)
 
-        outfile.write(line)
-        if not line.endswith(join):
-            outfile.write(join)
+            # Write line and optional newline, but avoid a string copy.
+            outfile.write(line)
+            if not line.endswith(join):
+                outfile.write(join)
+
+        outfile.flush()
+
+    except OSError as e:
+        if e.errno == errno.EPIPE:
+            # Python flushes standard streams on exit; redirect remaining output
+            # to devnull to avoid another BrokenPipeError at shutdown
+            devnull = os.open(os.devnull, os.O_WRONLY)
+            os.dup2(devnull, sys.stdout.fileno())
+            return 1
+        else:
+            _compat.reraise(e.__class__, e, sys.exc_info()[2])
 
 
 def cli_entrypoint():
