@@ -3,6 +3,8 @@
 
 import abc
 
+from pyin.exceptions import InvalidDirective
+
 
 class BaseOperation(object):
 
@@ -80,3 +82,8 @@ class BaseOperation(object):
         object
             Transformed objects.
         """
+
+    def raise_invalid_directive(self):
+        raise InvalidDirective(
+            "operation {} has not fully implemented directive: {}".format(
+                self.__class__.__name__, self.directive))
