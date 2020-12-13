@@ -44,3 +44,8 @@ class CompileError(Exception):
 class EvaluateError(Exception):
 
     """Raised when an expression could not be evaluated."""
+
+
+class InvalidDirective(Exception):
+
+    """Operation received a directive that is unrecognized."""
