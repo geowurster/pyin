@@ -32,8 +32,9 @@ class Eval(BaseOperation):
                 msg = inspect.cleandoc("""
                     failed to evaluate expression: {expr}
 
-                        {error}
-                """.format(expr=self.directive, error=e))
+                        {cname}: {error}
+                """.format(
+                    expr=self.directive, cname=e.__class__.__name__, error=e))
                 _compat.reraise(
                     EvaluateError,
                     EvaluateError(msg),
