@@ -5,6 +5,7 @@ Core components for pyin
 
 from __future__ import division, print_function
 
+from collections import Counter
 import functools
 import itertools as it
 import operator as op
@@ -142,6 +143,7 @@ def default_scope():
     """Default global scope for expression evaluation."""
 
     return {
+        'Counter': Counter,
         'filter': _compat.filter,
         'it': it,
         'itertools': it,
