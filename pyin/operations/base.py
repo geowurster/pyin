@@ -64,6 +64,30 @@ class BaseOperation(object):
         self.variable = variable
         self.global_scope = global_scope
 
+    @classmethod
+    def cli_help(cls, directive):
+
+        """Produce a formatted string appropriate for use in the CLI's
+        ``$ pyin help <directive>`` command. Text is expected to be formatted
+        like a docstring. Useful for dynamically forming help text on classes
+        that implement several directives.
+
+        The output of this method is mostly displayed as-is aside from being
+        indented slightly.
+
+        This pattern may make formatting and indentation a bit easier.
+
+            @classmethod
+            def cli_help(cls, directive):
+
+                '''Write as a normal docstring.'''
+
+                # Let Python do some of the work
+                return __doc__
+        """
+
+        return cls.__doc__ or "No docstring for directive: {}".format(directive)
+
     @abc.abstractmethod
     def __call__(self, stream):
 

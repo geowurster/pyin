@@ -7,6 +7,7 @@ import argparse
 import errno
 import os
 import sys
+import textwrap
 
 from pyin import _compat, evaluate, generate, expressions
 from pyin.exceptions import CLIError, CompileError, EvaluateError
@@ -120,6 +121,55 @@ def main(
     int
         Exit code.
     """
+
+    # Print a list of operations.
+    if len(expressions) == 1 and expressions[0] == 'ops':
+
+        # Loading all operations is relatively heavy. For the rest of 'pyin'
+        # this may be optimized at some point, but _always_ loading all is
+        # probably bad.
+        from pyin import operations
+
+        for item in sorted(operations._REGISTRY.keys()):
+            outfile.write("{}{}".format(item, os.linesep))
+        return 0
+
+    # Get help on a single operation.
+    if len(expressions) == 2 and expressions[0] == 'help':
+
+        # See note elsewhere about why this should be delayed.
+        import inspect
+        from pyin import operations
+
+        directive = normalized_directive = expressions[1]
+        if not normalized_directive.startswith(operations._DIRECTIVE_CHARACTER):
+            normalized_directive = "{}{}".format(
+                operations._DIRECTIVE_CHARACTER, normalized_directive)
+
+        if normalized_directive not in operations._REGISTRY:
+            raise argparse.ArgumentError(
+                None, "Unrecognized directive: {}".format(directive))
+
+        operation_cls = operations._REGISTRY[normalized_directive]
+        help_text = operation_cls.cli_help(normalized_directive)
+
+        # Make an attempt at cleaning up text
+        help_text = inspect.cleandoc(help_text)
+        if not help_text.endswith(os.linesep):
+            help_text += os.linesep
+
+        # Reformat as something like:
+        #
+        # %directive
+        # ----------
+        #   Help text
+        #   is indented
+        #   slightly
+        outfile.write("{}{}".format(normalized_directive, os.linesep))
+        outfile.write("{}{}".format("-" * len(normalized_directive), os.linesep))
+        outfile.write(textwrap.indent(help_text, '  '))
+
+        return 0
 
     # Cannot fully validate this in the parser without having to deal with
     # opening the file.
