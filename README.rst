@@ -43,5 +43,5 @@ Developing
     $ cd pyin
     $ python3 -m venv venv
     $ source venv/bin/activate
-    $ (venv) pip install -e ".[dev]"
+    $ (venv) pip install -e ".[test]"
     $ (venv) pytest --cov pyin --cov-report term-missing
