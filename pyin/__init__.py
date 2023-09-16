@@ -10,7 +10,7 @@ __source__ = 'https://github.com/geowurster/pyin'
 __license__ = '''
 New BSD License
 
-Copyright (c) 2015-2016, Kevin D. Wurster
+Copyright (c) 2015-2023, Kevin D. Wurster
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
