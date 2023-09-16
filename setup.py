@@ -50,7 +50,7 @@ setup(
         pyin=pyin.cli:main
     """,
     extras_require={
-        'dev': [
+        'test': [
             'pytest',
             'pytest-cov'
         ]
