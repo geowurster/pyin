@@ -36,15 +36,10 @@ setup(
     author=author,
     author_email=email,
     classifiers=[
-        'Development Status :: 4 - Beta',
+        'Development Status :: 7 - Inactive',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: BSD License',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.5',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8'
         'Topic :: Text Processing :: Filters',
         'Topic :: Text Processing :: General',
         'Topic :: Utilities',
@@ -55,10 +50,9 @@ setup(
         pyin=pyin.cli:main
     """,
     extras_require={
-        'dev': [
+        'test': [
             'pytest',
-            'pytest-cov',
-            'coveralls'
+            'pytest-cov'
         ]
     },
     include_package_data=True,
@@ -68,7 +62,7 @@ setup(
     license="New BSD",
     long_description=readme_content,
     packages=find_packages(exclude=['tests']),
-    python_requires=">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*",
+    python_requires=">=3.5",
     url=source,
     version=version,
     zip_safe=True
