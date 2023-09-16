@@ -12,7 +12,6 @@ import click
 
 import pyin
 import pyin.core
-from pyin import _compat
 
 
 @click.command(name='pyin')
@@ -111,7 +110,7 @@ def main(ctx, infiles, outfile, expressions, no_newline, block, skip_lines):
 
     for line in pyin.core.pmap(expressions, iterable):
 
-        if isinstance(line, _compat.string_types):
+        if isinstance(line, str):
             pass
         elif isinstance(line, (list, tuple, dict)):
             line = json.dumps(line)

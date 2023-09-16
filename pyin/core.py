@@ -13,8 +13,6 @@ import re
 import traceback
 from types import GeneratorType
 
-from pyin import _compat
-
 
 __all__ = ['pmap']
 
@@ -52,7 +50,7 @@ def _importer(string, scope):
         try:
             scope[module] = __import__(
                 module,
-                fromlist=list(map(str, other)),  # Python 2 can't handle unicode
+                fromlist=other,
                 level=0)
         except ImportError:
             pass
@@ -161,7 +159,7 @@ def pmap(expressions, iterable, var='line'):
         during processing.
     """
 
-    if isinstance(expressions, _compat.string_types):
+    if isinstance(expressions, str):
         expressions = expressions,
     else:
         expressions = tuple(expressions)
@@ -203,7 +201,7 @@ def pmap(expressions, iterable, var='line'):
             # Result is True/False.  Only continue if True.
             # Have to explicitly let string_types through for ''
             # which would otherwise be ignored.
-            elif isinstance(result, _compat.string_types) or result:
+            elif isinstance(result, str) or result:
                 continue
 
             # Got something else?  Halt processing for this obj.
@@ -213,5 +211,5 @@ def pmap(expressions, iterable, var='line'):
 
         # Have to explicitly let string_types through for ''
         # which would otherwise be ignored.
-        if isinstance(obj, _compat.string_types) or obj:
+        if isinstance(obj, str) or obj:
             yield obj
