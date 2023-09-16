@@ -2,7 +2,7 @@
 pyin
 ====
 
-It's like sed, but Python!
+It's like sed, but Python! A personal project.
 
 
 Why?
@@ -12,88 +12,16 @@ There are plenty of Unix tools, like ``sed`` and ``awk`` for processing text
 data from stdin or a file on disk, but the syntax can be unfriendly and
 sometimes its just easier to write a really simple script with a for loop
 and some if statements.  This project seeks to drop you in the middle of that
-for loop and let you write your own Python expressions to quickly get the job
-done without actually writing a script, handle I/O, etc.
-
-
-Command Line Interface
-======================
-
-This project is intended to be used from the included utility ``pyin``, although
-the underlying ``pyin.core.pmap()`` function could be used elsewhere with
-non-string objects.
-
-.. code-block:: console
-
-    Usage: pyin [OPTIONS] EXPRESSIONS...
-
-      It's like sed, but Python!
-
-      Map Python expressions across lines of text.  If an expression evaluates as
-      'False' or 'None' then the current line is thrown away.  If an expression
-      evaluates as 'True' then the next expression is evaluated.  If a list or
-      dictionary is encountered it is JSON encoded.  All other objects are cast
-      to string.
-
-      Newline characters are stripped from the end of each line before processing
-      and are added on write unless disabled with '--no-newline'.
-
-      This utility employs 'eval()' internally but uses a limited scope to help
-      prevent accidental side effects, but there are plenty of ways to get around
-      this so don't pass anything through pyin that you wouldn't pass through
-      'eval()'.
-
-      Remove lines that do not contain a specific word:
-
-          $ cat INFILE | pyin "'word' in line"
-
-      Capitalize lines containing a specific word:
-
-          $ cat INFILE | pyin "line.upper() if 'word' in line else line"
-
-      Only print every other word from lines that contain a specific word:
-
-          $ cat INFILE | pyin \
-          > "'word' in line" \      # Get lines with 'word' in them
-          > "line.split()[::2])" \  # Grab every other word
-          > "' '.join(line)"         # Convert list from previous expr to str
-
-      Process all input text as though it was a single line to replace carriage
-      returns with the system newline character:
-
-          $ cat INFILE | pyin --block \
-          > "line.replace('\r\n', os.newline)"
-
-      For a more in-depth explanation about exactly what's going on under the
-      hood, see the the docstring in 'pyin.core.pmap()':
-
-          $ python -c "help('pyin.core.pmap')"
-
-    Options:
-      --version           Show the version and exit.
-      -i, --infile PATH   Input text file. [default: stdin]
-      -o, --outfile PATH  Output text file. [default: stdout]
-      --block             Operate on all input text as though it was a single
-                          line.
-      --no-newline        Don't ensure each line ends with a newline character.
-      --help              Show this message and exit.
+``for`` loop and let you write your own Python expressions to quickly get the
+job done without actually writing a script, handle I/O, etc.
 
 
 Installing
 ==========
 
-Via pip:
-
 .. code-block:: console
 
-    $ pip install pyin
-
-From master branch:
-
-.. code-block:: console
-
-    $ git clone https://github.com/geowurster/pyin
-    $ cd pyin && python setup.py install
+    $ python3 -m pip install git+https://github.com/geowurster/pyin
 
 
 What about `py -x <https://github.com/Russell91/pythonpy>`_?
@@ -109,18 +37,11 @@ has some smarter filtering for expressions that evaluate as ``True`` or
 Developing
 ==========
 
-Install:
-
 .. code-block:: console
 
     $ git clone https://github.com/geowurster/pyin
     $ cd pyin
-    $ virtualenv venv && source venv/bin/activate
-    $ pip install -e .\[dev\]
-    $ pytest tests --cov pyin --cov-report term-missing
-
-
-License
-=======
-
-See ``LICENSE.txt``
+    $ python3 -m venv venv
+    $ source venv/bin/activate
+    $ (venv) pip install -e ".[dev]"
+    $ (venv) pytest --cov pyin --cov-report term-missing
