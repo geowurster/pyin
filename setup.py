@@ -57,8 +57,7 @@ setup(
     extras_require={
         'dev': [
             'pytest',
-            'pytest-cov',
-            'coveralls'
+            'pytest-cov'
         ]
     },
     include_package_data=True,
