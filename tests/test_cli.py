@@ -13,7 +13,7 @@ import textwrap
 
 import pytest
 
-from pyin.__main__ import _cli_entrypoint
+from pyin import _cli_entrypoint
 
 
 def test_single_expr(runner, csv_with_header_content):
