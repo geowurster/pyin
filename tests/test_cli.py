@@ -9,16 +9,15 @@ Unittests for $ pyin
 import json
 import os
 import subprocess
-import sys
 import textwrap
 
 import pytest
 
-import pyin.cli
+from pyin.__main__ import _cli_entrypoint
 
 
 def test_single_expr(runner, csv_with_header_content):
-    result = runner.invoke(pyin.cli.main, [
+    result = runner.invoke(_cli_entrypoint, [
         "line.upper()"
     ], input=csv_with_header_content)
     assert result.exit_code == 0
@@ -32,7 +31,7 @@ def test_multiple_expr(runner, path_csv_with_header):
         '"l3f1","l3f2","l3f3"',
         '"l4f1","l4f2","l4f3"',
         'END'))
-    result = runner.invoke(pyin.cli.main, [
+    result = runner.invoke(_cli_entrypoint, [
         '-i', path_csv_with_header,
         "line.upper() if 'field' in line else line",
         "'l1' not in line",
@@ -44,7 +43,7 @@ def test_multiple_expr(runner, path_csv_with_header):
 
 
 def test_with_generator(runner, csv_with_header_content):
-    result = runner.invoke(pyin.cli.main, [
+    result = runner.invoke(_cli_entrypoint, [
         "(i for i in line)"
     ], input=csv_with_header_content)
     assert result.exit_code == 0
@@ -53,7 +52,7 @@ def test_with_generator(runner, csv_with_header_content):
 
 
 def test_with_blank_lines(runner):
-    result = runner.invoke(pyin.cli.main, [
+    result = runner.invoke(_cli_entrypoint, [
         'line'
     ], input="")
     assert result.exit_code == 0
@@ -64,7 +63,7 @@ def test_block_mode(runner):
     text = json.dumps({k: None for k in range(10)}, indent=4)
     assert len(text.splitlines()) > 1
 
-    result = runner.invoke(pyin.cli.main, [
+    result = runner.invoke(_cli_entrypoint, [
         "--block",
         "json.loads(line)",
         "{k: v for k, v in line.items() if int(k) in range(5)}"
@@ -78,7 +77,7 @@ def test_block_mode(runner):
 def test_unicode(runner):
 
     text = u"""Héllö"""
-    result = runner.invoke(pyin.cli.main, [
+    result = runner.invoke(_cli_entrypoint, [
         'line.upper()'
     ], input=text)
     assert result.exit_code == 0
@@ -87,8 +86,8 @@ def test_unicode(runner):
 
 @pytest.mark.parametrize("skip_lines", [1, 3])
 def test_skip_single_line(runner, skip_lines, csv_with_header_content):
-    result = runner.invoke(pyin.cli.main, [
-        '--skip', skip_lines,
+    result = runner.invoke(_cli_entrypoint, [
+        '--skip', str(skip_lines),
         'line'
     ], input=csv_with_header_content)
     assert result.exit_code == 0
@@ -97,12 +96,12 @@ def test_skip_single_line(runner, skip_lines, csv_with_header_content):
 
 
 def test_skip_all_input(runner, csv_with_header_content):
-    result = runner.invoke(pyin.cli.main, [
-        '--skip', 100,
+    result = runner.invoke(_cli_entrypoint, [
+        '--skip', str(100),
         'line'
     ], input=csv_with_header_content)
-    assert result.output != 0
-    assert 'skipped' in result.output.lower()
+    assert result.exit_code == 0
+    assert result.output == ""
 
 
 def test_repr(runner):
@@ -113,7 +112,7 @@ def test_repr(runner):
     2015-01-03
     """.strip()
 
-    result = runner.invoke(pyin.cli.main, [
+    result = runner.invoke(_cli_entrypoint, [
         "line.strip()",
         "datetime.datetime.strptime(line, '%Y-%m-%d')",
         "isinstance(line, datetime.datetime)"
@@ -128,7 +127,7 @@ def test_repr(runner):
 
 
 def test_multi_infile(path_csv_with_header, runner):
-    result = runner.invoke(pyin.cli.main, [
+    result = runner.invoke(_cli_entrypoint, [
         '-i', path_csv_with_header,
         '-i', path_csv_with_header,
         'line'
