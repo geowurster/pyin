@@ -6,9 +6,6 @@ Setup script for pyin
 """
 
 
-import os
-
-from setuptools import find_packages
 from setuptools import setup
 
 
@@ -16,25 +13,21 @@ with open('README.rst') as f:
     readme_content = f.read().strip()
 
 
-version = author = email = source = None
-with open(os.path.join('pyin', '__init__.py')) as f:
+with open('pyin.py') as f:
     for line in f:
-        if line.strip().startswith('__version__'):
-            version = line.split('=')[1].strip().replace('"', '').replace("'", '')
-        elif line.strip().startswith('__author__'):
-            author = line.split('=')[1].strip().replace('"', '').replace("'", '')
-        elif line.strip().startswith('__email__'):
-            email = line.split('=')[1].strip().replace('"', '').replace("'", '')
-        elif line.strip().startswith('__source__'):
-            source = line.split('=')[1].strip().replace('"', '').replace("'", '')
-        elif all((version, author, email, source)):
+        if '__version__' in line:
+            version = line.split("=")[1].strip()
+            version = version.strip('"')
+            version = version.strip("'")
             break
+    else:
+        raise RuntimeError("Could not find '__version__'")
 
 
 setup(
     name='pyin',
-    author=author,
-    author_email=email,
+    author='Kevin Wurster',
+    author_email='wursterk@gmail.com',
     classifiers=[
         'Development Status :: 7 - Inactive',
         'Intended Audience :: Developers',
@@ -47,7 +40,7 @@ setup(
     description="It's like sed, but Python!",
     entry_points="""
         [console_scripts]
-        pyin=pyin.__main__:_cli_entrypoint
+        pyin=pyin:_cli_entrypoint
     """,
     extras_require={
         'test': [
@@ -58,9 +51,9 @@ setup(
     include_package_data=True,
     license="New BSD",
     long_description=readme_content,
-    packages=find_packages(exclude=['tests']),
+    py_modules=["pyin"],
     python_requires=">=3.5",
-    url=source,
+    url='https://github.com/geowurster/pyin',
     version=version,
     zip_safe=True
 )
