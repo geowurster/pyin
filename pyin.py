@@ -4,6 +4,7 @@
 from __future__ import division
 
 import argparse
+import builtins
 import functools
 import itertools
 import json
@@ -15,7 +16,7 @@ from typing import Optional, TextIO
 from types import GeneratorType
 
 
-__all__ = ['pmap']
+__all__ = ['eval']
 
 
 __version__ = '0.5.4'
@@ -105,7 +106,7 @@ def _importer(string, scope):
     return scope
 
 
-def pmap(expressions, iterable, var='line'):
+def eval(expressions, iterable, var='line'):
 
     """Map Python expressions across a stream of data.
 
@@ -143,7 +144,7 @@ def pmap(expressions, iterable, var='line'):
         expressions = (
             "line.upper() if 'mouse' in var else line",
             "'cat' in var")
-        pmap(expressions, iterable, var='line')
+        pyin.eval(expressions, iterable, var='line')
 
     Expressions can be used for a limited amount of control flow and filtering
     depending on what comes out of :func:`eval`. There are 3 types of objects
@@ -262,7 +263,7 @@ def pmap(expressions, iterable, var='line'):
 
         for expr in compiled_expressions:
 
-            result = eval(expr, global_scope, {'idx': idx, var: obj})
+            result = builtins.eval(expr, global_scope, {'idx': idx, var: obj})
 
             # Got a generator.  Expand and continue.
             if isinstance(result, GeneratorType):
@@ -432,7 +433,7 @@ def main(
     else:
         iterable = (l.rstrip(os.linesep) for l in input_stream)
 
-    for line in pmap(expressions, iterable):
+    for line in eval(expressions, iterable):
 
         if isinstance(line, str):
             pass
