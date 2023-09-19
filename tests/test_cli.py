@@ -126,22 +126,6 @@ def test_repr(runner):
     """).strip()
 
 
-def test_multi_infile(path_csv_with_header, runner):
-    result = runner.invoke(_cli_entrypoint, [
-        '-i', path_csv_with_header,
-        '-i', path_csv_with_header,
-        'line'
-    ])
-    assert result.exit_code == 0
-
-    expected = ''
-    for _ in range(2):
-        with open(path_csv_with_header) as f:
-            expected += f.read()
-
-    assert result.output == expected
-
-
 def test_catch_IOError(path_csv_with_header):
 
     """Python produces an IOError if the input is stdin, and the output is

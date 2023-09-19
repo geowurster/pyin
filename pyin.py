@@ -379,16 +379,13 @@ def cli_parser() -> argparse.ArgumentParser:
         '--version', action='version', version=__version__
     )
     aparser.add_argument(
-        '-i', '--infile', dest='infiles', metavar='PATH',
-        type=argparse.FileType('r'), default=[argparse.FileType('r')('-')],
-        action='append',
-        help="Input text file. Use '-' for stdin. Can be used multiple times"
-             " to specify multiple input files, which is like: $ cat * | pyin"
+        '-i', '--infile', type=argparse.FileType('r'), default='-',
+        help="Process this file. Use '-' for stdin (the default)."
     )
     aparser.add_argument(
         '-o', '--outfile', metavar='PATH',
         type=argparse.FileType('w'), default='-',
-        help="Output text file. Use '-' for stdout."
+        help="Write to this file. Use '-' for stdout (the default)."
     )
     aparser.add_argument(
         '--block', action='store_true',
@@ -411,26 +408,26 @@ def cli_parser() -> argparse.ArgumentParser:
 
 
 def main(
-        infiles: list[TextIO],
+        infile: TextIO,
         outfile: TextIO,
         expressions: list[str],
         no_newline: bool,
         block: bool,
         skip_lines: int
 ) -> int:
+
     """Command line interface.
 
     Direct access to the CLI logic. :obj:`argparse.ArgumentParser` can be
     accessed with :func:`parser`.
 
-    :param infiles:
-        List of input files to read from. Files are concatenated before
-        processing.
+    :param infile:
+        Read text from this file.
     :param outfile:
-        Write output to this file.
+        Write text to this file.
     :param expressions:
         Evaluate these ``pyin`` expressions on each line of text from
-        ``infiles``.
+        ``infile``.
     :param no_newline:
         Do not append a line separator to the end of each line.
     :param block:
@@ -438,15 +435,13 @@ def main(
         all input data into a single :obj:`str` and running that through
         ``expressions``.
     :param skip_lines:
-        Skip the first N lines. Applied to ``infiles`` _after_ they have
-        been concatenated. Does not skip the first N lines of each file
-        independently.
+        Skip the first N lines of the input stream.
 
     :returns:
         Exit code.
     """
 
-    input_stream = it.chain.from_iterable(infiles)
+    input_stream = (i for i in infile)
 
     for _ in range(skip_lines):
         try:
@@ -455,7 +450,7 @@ def main(
             return 0
 
     if block:
-        iterable = [os.linesep.join((f.read() for f in infiles))]
+        iterable = [infile.read()]
     else:
         iterable = (l.rstrip(os.linesep) for l in input_stream)
 
