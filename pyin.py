@@ -1,6 +1,4 @@
-"""
-Core components for pyin
-"""
+"""It's like ``sed``, but Python!"""
 
 
 from __future__ import division
@@ -57,8 +55,19 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 def _importer(string, scope):
 
-    """
-    Parse expressions and import modules into a scope.
+    """Parse expressions and import modules into a scope.
+
+    Parameters
+    ----------
+    string : str
+        A Python expression.
+    scope : dict
+        Import into this scope.
+
+    Returns
+    -------
+    dict
+        Pointer to ``scope``.
     """
 
     matches = set(re.findall("([a-zA-Z_.][a-zA-Z0-9_.]*)", string))
@@ -98,13 +107,28 @@ def _importer(string, scope):
 
 def pmap(expressions, iterable, var='line'):
 
-    """
-    Like `map()` but with `eval()` and multiple Python expressions.
-    Expressions can access the current line being processed with a variable
-    called `line`.
+    """Map Python expressions across a stream of data.
 
-    It's like being dropped inside of a `for` loop and with the ability to
-    create simple `if` statements and variable re-assignment.  This:
+    .. warning::
+
+        This function makes heavy use of Python's :func:`eval`, so a Python
+        expression evaluated by this function should be one that you are
+        comfortable passing to Python's :func:`eval`. Mostly this means that
+        only trusted code should be executed, but be sure to read the
+        appropriate Python docs.
+
+        One major difference is that the input expressions are examined, and
+        any referenced modules are imported dynamically. For example, an
+        expression like ``"os.path.exists(line)"`` would cause ``os.path.exists``
+        to be imported.
+
+    Expressions can access the current line being processed with a variable
+    called `line`. The goal is to emulate being dropped inside a ``for`` loop
+    with limited overhead, and maximum access to Python libraries.
+
+    For example, this:
+
+    .. code-block:: python
 
         for line in iterable:
             if 'mouse' in line:
@@ -112,38 +136,36 @@ def pmap(expressions, iterable, var='line'):
             if 'cat' in line:
                 yield line
 
-    turns into this:
+    would be expressed as:
+
+    .. code-block:: python
 
         expressions = (
             "line.upper() if 'mouse' in var else line",
             "'cat' in var")
         pmap(expressions, iterable, var='line')
 
-    Expressions are Python code that are passed through `eval()`, which is
-    given a modified global and local scope to help prevent mishaps by default.
-    External modules are automatically imported so don't pass any code to
-    `pmap()` that you wouldn't pass to `eval()`.
-
     Expressions can be used for a limited amount of control flow and filtering
-    depending on what comes out of `eval()`.  There are 3 types of objects
-    that an expression can return, and in some cases the object stored in `var`
-    is changed:
+    depending on what comes out of :func:`eval`. There are 3 types of objects
+    that an expression can return, and in some cases the object stored in
+    ``var`` is changed:
+    
+    * ``True`` - The original object from the ``iterator`` is passed to the
+      next expression for evaluation. If the last expression produces `True`
+      the object is yielded. Whatever is currently stored in ``var`` remains
+      unchanged.
+    * ``False`` or ``None`` - Expression evaluation halts and processing moves
+      on to the next object from `iterator`.
+    * ``object`` - Expression results that aren't `True` or `False` are placed
+      inside the ``var`` name for subsequent expressions.
 
-        True : The original object from the `iterator` is passed to the next
-               expression for evaluation.  If the last expression produces
-               `True` the object is yielded.  Whatever is currently stored
-               in `var` remains unchanged.
+    So, use expressions that evaluate as ``True`` or ``False`` to filter lines
+    and anything else to transform content.
 
-        False or None: Expression evaluation halts and processing moves on to
-                       the next object from `iterator`.
+    Consider the following example CSV and expressions using ``line`` as
+    ``var``:
 
-        <object> : Expression results that aren't `True` or `False` are
-                   placed inside of the `var` name for subsequent expressions.
-
-    So, use expressions that evaluate as `True` or `False` to filter lines and
-    anything else to transform content.
-
-    Consider the following example CSV and expressions using `line` as `var`:
+    .. code-blocK::
 
         "field1","field2","field3"
         "l1f1","l1f2","l1f3"
@@ -152,32 +174,46 @@ def pmap(expressions, iterable, var='line'):
         "l4f1","l4f2","l4f3"
         "l5f1","l5f2","l5f3"
 
-    This expression would only return the first line because it evaluates as
-    `True` and the rest evaluate as `False`:
+    This expression:
+
+    .. code-block::
 
         "'field' in line"
 
-        is the same as:
+    is equivalent to:
+
+    .. code-block:: python
 
         for line in iterator:
             if 'field' in line:
                 yield line
 
-    To capitalize the second line:
+    and would only return the first line because it evaluates as ``True`` and
+    the rest evaluate as ``False``.
+
+    To capitalize the second line the expression:
+
+    .. code-block::
 
         "line.upper() if 'l2' in line"
 
-        is the same as:
+    would be equivalent to:
+
+    .. code-block:: python
 
         for line in iterator:
            if 'l2' in line:
                line = line.upper()
 
-    Convert to JSON encoded lists:
+    Convert to JSON encoded lists using this odd expression:
+
+    .. code-block::
 
         "map(lambda x: x.replace('\"', ''), line.strip().split(','))"
 
-        is the same as (this could be condensed):
+    Equivalent to this Python code:
+
+    .. code-block:: python
 
         for line in iterator:
             line = line.strip().replace('"', '').strip()
