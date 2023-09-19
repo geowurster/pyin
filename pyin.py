@@ -1,8 +1,6 @@
 """It's like ``sed``, but Python!"""
 
 
-from __future__ import division
-
 import argparse
 import builtins
 import functools
