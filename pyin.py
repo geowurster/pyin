@@ -11,7 +11,8 @@ import operator
 import os
 import re
 import traceback
-from typing import Optional, Sequence, TextIO, Union
+from types import CodeType
+from typing import Optional, Sequence, TextIO, Tuple, Union
 
 
 __all__ = ['eval']
@@ -54,6 +55,33 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 _DEFAULT_VARIABLE = 'i'
 _IMPORTER_REGEX = re.compile(r"([a-zA-Z_.][a-zA-Z0-9_.]*)")
+
+
+def compile(expressions: Union[str, Sequence[str]]) -> Tuple[CodeType]:
+
+    """Compile expressions to Python :module:`code` objects.
+
+    Python's :func:`eval` compiles expressions before executing, but does not
+    cache them. Given that we execute each expression as much as once per
+    line, we can achieve a noticeable speedup by pre-compiling the expressions.
+
+    :param expressions:
+        Expressions to compile.
+    """
+
+    compiled = []
+
+    for expr in expressions:
+        try:
+            code = builtins.compile(expr, '<expression>', 'eval')
+        except SyntaxError as e:
+            msg = (f"could not compile expression:"
+                   f" {expr}{os.linesep}{os.linesep}{traceback.format_exc(0)}")
+            raise SyntaxError(msg) from e
+
+        compiled.append(code)
+
+    return tuple(compiled)
 
 
 def importer(
@@ -233,7 +261,6 @@ def eval(expressions, iterable, var='line'):
             line = line.strip().replace('"', '').strip()
             yield line.split(',')
 
-
     Parameters
     ----------
     expressions : str or tuple
@@ -258,18 +285,7 @@ def eval(expressions, iterable, var='line'):
         'reduce': functools.reduce}
 
     importer(expressions, scope=global_scope)
-
-    compiled_expressions = []
-    for expr in expressions:
-        try:
-            compiled_expressions.append(compile(expr, '<string>', 'eval'))
-        except SyntaxError:
-            raise SyntaxError(
-                "Could not compile expression:"
-                " {expression}{ls}{ls}{traceback}".format(
-                    expression=expr,
-                    ls=os.linesep,
-                    traceback=traceback.format_exc(0)))
+    compiled_expressions = compile(expressions)
 
     for idx, obj in enumerate(iterable):
 
