@@ -4,14 +4,14 @@
 import argparse
 import builtins
 import functools
-import itertools
+import itertools as it
 from inspect import isgenerator
 import json
 import operator
 import os
 import re
 import traceback
-from typing import Optional, TextIO
+from typing import Optional, Sequence, TextIO, Union
 
 
 __all__ = ['eval']
@@ -52,51 +52,66 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 '''
 
 
-def _importer(string, scope):
+_DEFAULT_VARIABLE = 'i'
+_IMPORTER_REGEX = re.compile(r"([a-zA-Z_.][a-zA-Z0-9_.]*)")
 
-    """Parse expressions and import modules into a scope.
 
-    Parameters
-    ----------
-    string : str
-        A Python expression.
-    scope : dict
-        Import into this scope.
+def importer(
+        expressions: Union[str, Sequence[str]],
+        scope: Optional[dict] = None
+) -> dict:
 
-    Returns
-    -------
-    dict
-        Pointer to ``scope``.
+    """Parse expressions and import modules into a single scope.
+
+    All :obj:`ImportError`s are suppressed. It is pretty much impossible to
+    know if a given module is expected to be importable, but in the event
+    a module really does fail to import, a :obj:`NameError` will be raised at
+    runtime when an expression references an object that does not exist.
+
+    :param expressions:
+        Look through these expressions and attempt to import anything that
+        looks like a reference to a module.
+    :param scope:
+        Import modules into this scope. By default, a new scope is created
+        with every call, but data can be imported into an existing scope by
+        passing a dictionary.
     """
 
-    matches = set(re.findall("([a-zA-Z_.][a-zA-Z0-9_.]*)", string))
-    for m in matches:
+    scope = scope or {}
 
-        split = m.split('.', 1)
+    # Find all potential modules to try and import
+    all_matches = set(it.chain.from_iterable(
+        re.findall(_IMPORTER_REGEX, expr) for expr in expressions))
 
-        # Like: json.loads(line)
+    for match in all_matches:
+
+        split = match.split('.', 1)
+
+        # Like: json.loads()
         if len(split) == 1:
             module = split[0]
             other = []
-        # Like: tests.module.upper(line)
+
+        # Like: os.path.join()
         elif len(split) == 2:
             module, other = split
             other = [other]
-        # Shouldn't hit this
-        else:  # pragma no cover
-            raise RuntimeError("Error importing: {}".format(m))
 
-        # Are you trying to figure out why relative imports don't work?  If so,
-        # the issue is probably `m.split()` producing ['', 'name'] instead of
-        # ['.name'].  `__import__('.name')__` doesn't appear to work though,
-        # so good luck!
+        # Shouldn't hit this
+        else:
+            raise ImportError("Error importing from: {}".format(match))
+
+        # Are you trying to figure out why relative imports don't work?
+        # If so, the issue is probably `m.split()` producing ['', 'name']
+        # instead of ['.name']. `__import__('.name')__` doesn't appear
+        # to work though, so good luck!
         if not module:
             continue
 
         try:
             scope[module] = __import__(
                 module,
-                fromlist=other,
+                fromlist=list(map(str, other)),
                 level=0)
         except ImportError:
             pass
@@ -238,12 +253,11 @@ def eval(expressions, iterable, var='line'):
         expressions = tuple(expressions)
 
     global_scope = {
-        'it': itertools,
+        'it': it,
         'op': operator,
         'reduce': functools.reduce}
 
-    for expr in expressions:
-        global_scope.update(_importer(expr, global_scope))
+    importer(expressions, scope=global_scope)
 
     compiled_expressions = []
     for expr in expressions:
@@ -418,7 +432,7 @@ def main(
         Exit code.
     """
 
-    input_stream = itertools.chain.from_iterable(infiles)
+    input_stream = it.chain.from_iterable(infiles)
 
     for _ in range(skip_lines):
         try:
