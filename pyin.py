@@ -5,13 +5,13 @@ import argparse
 import builtins
 import functools
 import itertools
+from inspect import isgenerator
 import json
 import operator
 import os
 import re
 import traceback
 from typing import Optional, TextIO
-from types import GeneratorType
 
 
 __all__ = ['eval']
@@ -264,7 +264,7 @@ def eval(expressions, iterable, var='line'):
             result = builtins.eval(expr, global_scope, {'idx': idx, var: obj})
 
             # Got a generator.  Expand and continue.
-            if isinstance(result, GeneratorType):
+            if isgenerator(result):
                 obj = list(result)
 
             # Result is some object.  Pass it back in under `var`.
