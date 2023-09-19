@@ -14,9 +14,6 @@ import traceback
 from typing import Optional, Sequence, TextIO, Union
 
 
-__all__ = ['eval']
-
-
 __version__ = '0.5.4'
 __author__ = 'Kevin Wurster'
 __license__ = '''
