@@ -147,7 +147,7 @@ def importer(
     return scope
 
 
-def eval(expressions, iterable, var='line'):
+def eval(expressions, iterable, variable='line'):
 
     """Map Python expressions across a stream of data.
 
@@ -190,22 +190,22 @@ def eval(expressions, iterable, var='line'):
     Expressions can be used for a limited amount of control flow and filtering
     depending on what comes out of :func:`eval`. There are 3 types of objects
     that an expression can return, and in some cases the object stored in
-    ``var`` is changed:
+    ``variable`` is changed:
     
     * ``True`` - The original object from the ``iterator`` is passed to the
       next expression for evaluation. If the last expression produces `True`
-      the object is yielded. Whatever is currently stored in ``var`` remains
-      unchanged.
+      the object is yielded. Whatever is currently stored in ``variable``
+      remains unchanged.
     * ``False`` or ``None`` - Expression evaluation halts and processing moves
       on to the next object from `iterator`.
     * ``object`` - Expression results that aren't `True` or `False` are placed
-      inside the ``var`` name for subsequent expressions.
+      inside the ``variable`` name for subsequent expressions.
 
     So, use expressions that evaluate as ``True`` or ``False`` to filter lines
     and anything else to transform content.
 
     Consider the following example CSV and expressions using ``line`` as
-    ``var``:
+    ``variable``:
 
     .. code-blocK::
 
@@ -269,7 +269,7 @@ def eval(expressions, iterable, var='line'):
         will automatically be imported.
     iterable : hasattr('__iter__')
         An iterator producing one object to be evaluated per iteration.
-    var : str, optional
+    variable : str, optional
         Expressions reference this variable to access objects from `iterator`
         during processing.
     """
@@ -291,13 +291,14 @@ def eval(expressions, iterable, var='line'):
 
         for expr in compiled_expressions:
 
-            result = builtins.eval(expr, global_scope, {'idx': idx, var: obj})
+            result = builtins.eval(
+                expr, global_scope, {'idx': idx, variable: obj})
 
             # Got a generator.  Expand and continue.
             if isgenerator(result):
                 obj = list(result)
 
-            # Result is some object.  Pass it back in under `var`.
+            # Result is some object.  Pass it back in under 'variable'.
             elif not isinstance(result, bool):
                 obj = result
 
