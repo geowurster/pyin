@@ -8,14 +8,14 @@ import tests._test_module
 
 
 def test_single_expr():
-    result = list(pyin.pmap("20 <= line <= 80", range(100)))
+    result = list(pyin.eval("20 <= line <= 80", range(100)))
     assert len(result) == len(list(range(20, 81)))
     for item in result:
         assert 20 <= item <= 80
 
 
 def test_with_map():
-    result = list(pyin.pmap(
+    result = list(pyin.eval(
         "list(map(int, line.split('-')))", ['2015-01-01']))
     assert result == [[2015, 1, 1]]
 
@@ -25,12 +25,12 @@ def test_with_map():
 ])
 def test_scope(obj):
     """Make sure specific objects aren't removed from the scope."""
-    for res in pyin.pmap(obj, 'word'):
+    for res in pyin.eval(obj, 'word'):
         pass
 
 
 def test_floating_point_division():
-    result = next(pyin.pmap('5 / 3', ['']))
+    result = next(pyin.eval('5 / 3', ['']))
     assert isinstance(result, float)
     assert 1 < result < 2
 
@@ -41,4 +41,4 @@ def test_floating_point_division():
 ])
 def test_invalid_expression(expression):
     with pytest.raises(SyntaxError):
-        next(pyin.pmap(expression, []))
+        next(pyin.eval(expression, []))
