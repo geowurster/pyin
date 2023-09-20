@@ -21,6 +21,7 @@ def test_single_expr(runner, csv_with_header_content):
         "line.upper()"
     ], input=csv_with_header_content)
     assert result.exit_code == 0
+    assert not result.err
     assert result.output.strip() == csv_with_header_content.upper().strip()
 
 
@@ -39,6 +40,7 @@ def test_multiple_expr(runner, path_csv_with_header):
         "'END' if 'l5' in line else line"
     ])
     assert result.exit_code == 0
+    assert not result.err
     assert result.output.strip() == expected.strip()
 
 
@@ -47,6 +49,7 @@ def test_with_generator(runner, csv_with_header_content):
         "(i for i in line)"
     ], input=csv_with_header_content)
     assert result.exit_code == 0
+    assert not result.err
     assert os.linesep.join(
         [json.dumps(list((i for i in line))) for line in csv_with_header_content.splitlines()])
 
@@ -56,6 +59,7 @@ def test_with_blank_lines(runner):
         'line'
     ], input="")
     assert result.exit_code == 0
+    assert not result.err
     assert result.output == ''
 
 
@@ -69,6 +73,7 @@ def test_block_mode(runner):
         "{k: v for k, v in line.items() if int(k) in range(5)}"
     ], input=text)
     assert result.exit_code == 0
+    assert not result.err
 
     expected = '{"3": null, "4": null, "0": null, "2": null, "1": null}'
     assert json.loads(expected) == json.loads(result.output)
@@ -81,6 +86,7 @@ def test_unicode(runner):
         'line.upper()'
     ], input=text)
     assert result.exit_code == 0
+    assert not result.err
     assert result.output.strip() == text.strip().upper()
 
 
@@ -91,6 +97,7 @@ def test_skip_single_line(runner, skip_lines, csv_with_header_content):
         'line'
     ], input=csv_with_header_content)
     assert result.exit_code == 0
+    assert not result.err
     expected = os.linesep.join(csv_with_header_content.splitlines()[skip_lines:])
     assert result.output.strip() == expected.strip()
 
@@ -101,6 +108,7 @@ def test_skip_all_input(runner, csv_with_header_content):
         'line'
     ], input=csv_with_header_content)
     assert result.exit_code == 0
+    assert not result.err
     assert result.output == ""
 
 
@@ -119,27 +127,12 @@ def test_repr(runner):
     ], input=text)
 
     assert result.exit_code == 0
+    assert not result.err
     assert result.output.strip() == textwrap.dedent("""
     datetime.datetime(2015, 1, 1, 0, 0)
     datetime.datetime(2015, 1, 2, 0, 0)
     datetime.datetime(2015, 1, 3, 0, 0)
     """).strip()
-
-
-def test_multi_infile(path_csv_with_header, runner):
-    result = runner.invoke(_cli_entrypoint, [
-        '-i', path_csv_with_header,
-        '-i', path_csv_with_header,
-        'line'
-    ])
-    assert result.exit_code == 0
-
-    expected = ''
-    for _ in range(2):
-        with open(path_csv_with_header) as f:
-            expected += f.read()
-
-    assert result.output == expected
 
 
 def test_catch_IOError(path_csv_with_header):
@@ -151,3 +144,73 @@ def test_catch_IOError(path_csv_with_header):
     result = subprocess.check_output(
         "cat {} | pyin line | head -1".format(path_csv_with_header), shell=True)
     assert result.decode().strip() == '"field1","field2","field3"'.strip()
+
+
+def test_gen(runner):
+
+    """``--gen`` to generate input."""
+
+    result = runner.invoke(_cli_entrypoint, ['--gen', 'range(3)', "line + 1"])
+    expected = os.linesep.join(map(str, range(1, 4))) + os.linesep
+
+    assert result.exit_code == 0
+    assert not result.err
+    assert expected == result.output
+
+
+def test_gen_stdin(runner):
+
+    """``--gen`` combined with piping data to ``stdin`` is not allowed."""
+
+    result = runner.invoke(_cli_entrypoint, ['--gen', 'range(3)'], input="trash")
+
+    assert result.exit_code == 1
+    assert not result.output
+    for item in ('cannot combine', '--gen', 'stdin'):
+        assert item in result.err
+
+
+@pytest.mark.parametrize("skip,expected", [
+    # Skip 2 out of 3 lines
+    (2, '2' + os.linesep),
+    # Skip exactly all lines
+    (3, ""),
+    # Skip too many lines
+    (4, "")
+])
+def test_gen_skip(runner, skip, expected):
+
+    """Combine ``--gen`` with ``--skip``."""
+
+    result = runner.invoke(
+        _cli_entrypoint,
+        ['--gen', 'range(3)', '--skip', str(skip)])
+
+    assert result.exit_code == 0
+    assert not result.err
+    assert result.output == expected
+
+
+def test_gen_not_iterable(runner):
+
+    """``--gen`` does not produce an iterable object."""
+
+    result = runner.invoke(_cli_entrypoint, ['--gen', '1'])
+
+    assert result.exit_code == 1
+    assert not result.output
+    for item in ('--gen', 'iterable object'):
+        assert item in result.err
+
+
+def test_gen_block(runner):
+
+    """``--gen`` combined with ``--block``."""
+
+    result = runner.invoke(
+        _cli_entrypoint,
+        ['--gen', 'range(3)', '--block', 'line'])
+
+    assert result.exit_code == 0
+    assert not result.err
+    assert result.output == '[0, 1, 2]' + os.linesep

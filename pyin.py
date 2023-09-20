@@ -1,23 +1,20 @@
-"""
-Core components for pyin
-"""
+"""It's like ``sed``, but Python!"""
 
-
-from __future__ import division
 
 import argparse
+import builtins
 import functools
-import itertools
+import itertools as it
+import sys
+import signal
+from inspect import isgenerator
 import json
 import operator
 import os
 import re
 import traceback
-from typing import Optional, TextIO
-from types import GeneratorType
-
-
-__all__ = ['pmap']
+from types import CodeType
+from typing import Callable, Iterable, Optional, Sequence, TextIO, Tuple, Union
 
 
 __version__ = '0.5.4'
@@ -55,40 +52,119 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 '''
 
 
-def _importer(string, scope):
+_DEFAULT_VARIABLE = 'i'
+_IMPORTER_REGEX = re.compile(r"([a-zA-Z_.][a-zA-Z0-9_.]*)")
 
+
+
+def _normalize_expressions(f: Callable) -> Callable:
+
+    """Ensure functions can receive single or multiple expressions.
+
+    Function's first positional argument must be called ``expressions``.
+
+    :param f:
+        Decorated function.
     """
-    Parse expressions and import modules into a scope.
+
+    @functools.wraps(f)
+    def inner(expressions, *args, **kwargs):
+
+        if isinstance(expressions, str):
+            expressions = (expressions, )
+        elif not isinstance(expressions, Sequence):
+            raise TypeError(f"not a sequence: {expressions=}")
+
+        return f(tuple(expressions), *args, **kwargs)
+
+    return inner
+
+
+@_normalize_expressions
+def compile(expressions: Union[str, Sequence[str]]) -> Tuple[CodeType]:
+
+    """Compile expressions to Python :module:`code` objects.
+
+    Python's :func:`eval` compiles expressions before executing, but does not
+    cache them. Given that we execute each expression as much as once per
+    line, we can achieve a noticeable speedup by pre-compiling the expressions.
+
+    :param expressions:
+        Expressions to compile.
     """
 
-    matches = set(re.findall("([a-zA-Z_.][a-zA-Z0-9_.]*)", string))
-    for m in matches:
+    compiled = []
 
-        split = m.split('.', 1)
+    for expr in expressions:
+        try:
+            code = builtins.compile(expr, '<expression>', 'eval')
+        except SyntaxError as e:
+            msg = (f"could not compile expression:"
+                   f" {expr}{os.linesep}{os.linesep}{traceback.format_exc(0)}")
+            raise SyntaxError(msg) from e
 
-        # Like: json.loads(line)
+        compiled.append(code)
+
+    return tuple(compiled)
+
+
+@_normalize_expressions
+def importer(
+        expressions: Union[str, Sequence[str]],
+        scope: Optional[dict] = None
+) -> dict:
+
+    """Parse expressions and import modules into a single scope.
+
+    All :obj:`ImportError`s are suppressed. It is pretty much impossible to
+    know if a given module is expected to be importable, but in the event
+    a module really does fail to import, a :obj:`NameError` will be raised at
+    runtime when an expression references an object that does not exist.
+
+    :param expressions:
+        Look through these expressions and attempt to import anything that
+        looks like a reference to a module.
+    :param scope:
+        Import modules into this scope. By default, a new scope is created
+        with every call, but data can be imported into an existing scope by
+        passing a dictionary.
+    """
+
+    scope = scope or {}
+
+    # Find all potential modules to try and import
+    all_matches = set(it.chain.from_iterable(
+        re.findall(_IMPORTER_REGEX, expr) for expr in expressions))
+
+    for match in all_matches:
+
+        split = match.split('.', 1)
+
+        # Like: json.loads()
         if len(split) == 1:
             module = split[0]
             other = []
-        # Like: tests.module.upper(line)
+
+        # Like: os.path.join()
         elif len(split) == 2:
             module, other = split
             other = [other]
-        # Shouldn't hit this
-        else:  # pragma no cover
-            raise RuntimeError("Error importing: {}".format(m))
 
-        # Are you trying to figure out why relative imports don't work?  If so,
-        # the issue is probably `m.split()` producing ['', 'name'] instead of
-        # ['.name'].  `__import__('.name')__` doesn't appear to work though,
-        # so good luck!
+        # Shouldn't hit this
+        else:
+            raise ImportError("Error importing from: {}".format(match))
+
+        # Are you trying to figure out why relative imports don't work?
+        # If so, the issue is probably `m.split()` producing ['', 'name']
+        # instead of ['.name']. `__import__('.name')__` doesn't appear
+        # to work though, so good luck!
         if not module:
             continue
 
         try:
             scope[module] = __import__(
                 module,
-                fromlist=other,
+                fromlist=list(map(str, other)),
                 level=0)
         except ImportError:
             pass
@@ -96,15 +172,31 @@ def _importer(string, scope):
     return scope
 
 
-def pmap(expressions, iterable, var='line'):
+@_normalize_expressions
+def eval(expressions, iterable, variable='line'):
 
-    """
-    Like `map()` but with `eval()` and multiple Python expressions.
+    """Map Python expressions across a stream of data.
+
+    .. warning::
+
+        This function makes heavy use of Python's :func:`eval`, so a Python
+        expression evaluated by this function should be one that you are
+        comfortable passing to Python's :func:`eval`. Mostly this means that
+        only trusted code should be executed, but be sure to read the
+        appropriate Python docs.
+
+        One major difference is that the input expressions are examined, and
+        any referenced modules are imported dynamically. For example, an
+        expression like ``"os.path.exists(line)"`` would cause ``os.path.exists``
+        to be imported.
+
     Expressions can access the current line being processed with a variable
-    called `line`.
+    called `line`. The goal is to emulate being dropped inside a ``for`` loop
+    with limited overhead, and maximum access to Python libraries.
 
-    It's like being dropped inside of a `for` loop and with the ability to
-    create simple `if` statements and variable re-assignment.  This:
+    For example, this:
+
+    .. code-block:: python
 
         for line in iterable:
             if 'mouse' in line:
@@ -112,38 +204,36 @@ def pmap(expressions, iterable, var='line'):
             if 'cat' in line:
                 yield line
 
-    turns into this:
+    would be expressed as:
+
+    .. code-block:: python
 
         expressions = (
             "line.upper() if 'mouse' in var else line",
             "'cat' in var")
-        pmap(expressions, iterable, var='line')
-
-    Expressions are Python code that are passed through `eval()`, which is
-    given a modified global and local scope to help prevent mishaps by default.
-    External modules are automatically imported so don't pass any code to
-    `pmap()` that you wouldn't pass to `eval()`.
+        pyin.eval(expressions, iterable, var='line')
 
     Expressions can be used for a limited amount of control flow and filtering
-    depending on what comes out of `eval()`.  There are 3 types of objects
-    that an expression can return, and in some cases the object stored in `var`
-    is changed:
+    depending on what comes out of :func:`eval`. There are 3 types of objects
+    that an expression can return, and in some cases the object stored in
+    ``variable`` is changed:
 
-        True : The original object from the `iterator` is passed to the next
-               expression for evaluation.  If the last expression produces
-               `True` the object is yielded.  Whatever is currently stored
-               in `var` remains unchanged.
+    * ``True`` - The original object from the ``iterator`` is passed to the
+      next expression for evaluation. If the last expression produces `True`
+      the object is yielded. Whatever is currently stored in ``variable``
+      remains unchanged.
+    * ``False`` or ``None`` - Expression evaluation halts and processing moves
+      on to the next object from `iterator`.
+    * ``object`` - Expression results that aren't `True` or `False` are placed
+      inside the ``variable`` name for subsequent expressions.
 
-        False or None: Expression evaluation halts and processing moves on to
-                       the next object from `iterator`.
+    So, use expressions that evaluate as ``True`` or ``False`` to filter lines
+    and anything else to transform content.
 
-        <object> : Expression results that aren't `True` or `False` are
-                   placed inside of the `var` name for subsequent expressions.
+    Consider the following example CSV and expressions using ``line`` as
+    ``variable``:
 
-    So, use expressions that evaluate as `True` or `False` to filter lines and
-    anything else to transform content.
-
-    Consider the following example CSV and expressions using `line` as `var`:
+    .. code-blocK::
 
         "field1","field2","field3"
         "l1f1","l1f2","l1f3"
@@ -152,37 +242,50 @@ def pmap(expressions, iterable, var='line'):
         "l4f1","l4f2","l4f3"
         "l5f1","l5f2","l5f3"
 
-    This expression would only return the first line because it evaluates as
-    `True` and the rest evaluate as `False`:
+    This expression:
+
+    .. code-block::
 
         "'field' in line"
 
-        is the same as:
+    is equivalent to:
+
+    .. code-block:: python
 
         for line in iterator:
             if 'field' in line:
                 yield line
 
-    To capitalize the second line:
+    and would only return the first line because it evaluates as ``True`` and
+    the rest evaluate as ``False``.
+
+    To capitalize the second line the expression:
+
+    .. code-block::
 
         "line.upper() if 'l2' in line"
 
-        is the same as:
+    would be equivalent to:
+
+    .. code-block:: python
 
         for line in iterator:
            if 'l2' in line:
                line = line.upper()
 
-    Convert to JSON encoded lists:
+    Convert to JSON encoded lists using this odd expression:
+
+    .. code-block::
 
         "map(lambda x: x.replace('\"', ''), line.strip().split(','))"
 
-        is the same as (this could be condensed):
+    Equivalent to this Python code:
+
+    .. code-block:: python
 
         for line in iterator:
             line = line.strip().replace('"', '').strip()
             yield line.split(',')
-
 
     Parameters
     ----------
@@ -192,47 +295,31 @@ def pmap(expressions, iterable, var='line'):
         will automatically be imported.
     iterable : hasattr('__iter__')
         An iterator producing one object to be evaluated per iteration.
-    var : str, optional
+    variable : str, optional
         Expressions reference this variable to access objects from `iterator`
         during processing.
     """
 
-    if isinstance(expressions, str):
-        expressions = expressions,
-    else:
-        expressions = tuple(expressions)
-
     global_scope = {
-        'it': itertools,
+        'it': it,
         'op': operator,
         'reduce': functools.reduce}
 
-    for expr in expressions:
-        global_scope.update(_importer(expr, global_scope))
-
-    compiled_expressions = []
-    for expr in expressions:
-        try:
-            compiled_expressions.append(compile(expr, '<string>', 'eval'))
-        except SyntaxError:
-            raise SyntaxError(
-                "Could not compile expression:"
-                " {expression}{ls}{ls}{traceback}".format(
-                    expression=expr,
-                    ls=os.linesep,
-                    traceback=traceback.format_exc(0)))
+    importer(expressions, scope=global_scope)
+    compiled_expressions = compile(expressions)
 
     for idx, obj in enumerate(iterable):
 
         for expr in compiled_expressions:
 
-            result = eval(expr, global_scope, {'idx': idx, var: obj})
+            result = builtins.eval(
+                expr, global_scope, {'idx': idx, variable: obj})
 
             # Got a generator.  Expand and continue.
-            if isinstance(result, GeneratorType):
+            if isgenerator(result):
                 obj = list(result)
 
-            # Result is some object.  Pass it back in under `var`.
+            # Result is some object.  Pass it back in under 'variable'.
             elif not isinstance(result, bool):
                 obj = result
 
@@ -249,7 +336,7 @@ def pmap(expressions, iterable, var='line'):
 
         # Have to explicitly let string_types through for ''
         # which would otherwise be ignored.
-        if isinstance(obj, str) or obj:
+        if isinstance(obj, str) or isinstance(obj, (int, float)) or obj:
             yield obj
 
 
@@ -315,17 +402,22 @@ def cli_parser() -> argparse.ArgumentParser:
     aparser.add_argument(
         '--version', action='version', version=__version__
     )
-    aparser.add_argument(
-        '-i', '--infile', dest='infiles', metavar='PATH',
-        type=argparse.FileType('r'), default=[argparse.FileType('r')('-')],
-        action='append',
-        help="Input text file. Use '-' for stdin. Can be used multiple times"
-             " to specify multiple input files, which is like: $ cat * | pyin"
+
+    # Input data
+    input_group = aparser.add_mutually_exclusive_group()
+    input_group.add_argument(
+        '--gen', metavar='EXPR', dest='generate_expr',
+        help="Execute expression and feed results into other expressions."
     )
+    input_group.add_argument(
+        '-i', '--infile', type=argparse.FileType('r'), default='-',
+        help="Read input from this file. Use '-' for stdin (the default)."
+    )
+
     aparser.add_argument(
         '-o', '--outfile', metavar='PATH',
         type=argparse.FileType('w'), default='-',
-        help="Output text file. Use '-' for stdout."
+        help="Write to this file. Use '-' for stdout (the default)."
     )
     aparser.add_argument(
         '--block', action='store_true',
@@ -348,26 +440,29 @@ def cli_parser() -> argparse.ArgumentParser:
 
 
 def main(
-        infiles: list[TextIO],
+        generate_expr: Optional[str],
+        infile: TextIO,
         outfile: TextIO,
         expressions: list[str],
         no_newline: bool,
         block: bool,
         skip_lines: int
 ) -> int:
+
     """Command line interface.
 
     Direct access to the CLI logic. :obj:`argparse.ArgumentParser` can be
     accessed with :func:`parser`.
 
-    :param infiles:
-        List of input files to read from. Files are concatenated before
-        processing.
+    :param generate_expr:
+        Generate input data from this expression instead of ``infile``.
+    :param infile:
+        Read text from this file.
     :param outfile:
-        Write output to this file.
+        Write text to this file.
     :param expressions:
         Evaluate these ``pyin`` expressions on each line of text from
-        ``infiles``.
+        ``infile``.
     :param no_newline:
         Do not append a line separator to the end of each line.
     :param block:
@@ -375,28 +470,69 @@ def main(
         all input data into a single :obj:`str` and running that through
         ``expressions``.
     :param skip_lines:
-        Skip the first N lines. Applied to ``infiles`` _after_ they have
-        been concatenated. Does not skip the first N lines of each file
-        independently.
+        Skip the first N lines of the input stream.
 
     :returns:
         Exit code.
     """
 
-    input_stream = itertools.chain.from_iterable(infiles)
+    # ==== Fetch Input Data Stream ==== #
 
-    for _ in range(skip_lines):
-        try:
-            next(input_stream)
-        except StopIteration:
-            return 0
+    # Piping data to stdin combined with '--gen' is not allowed.
+    if generate_expr is not None and not infile.isatty():
+        raise argparse.ArgumentError(
+            None, "cannot combine '--gen' with piping data to stdin")
 
-    if block:
-        iterable = [os.linesep.join((f.read() for f in infiles))]
+    # Generating data for input. Must also handle '--block' because the
+    # behavior differs for something like a sequence of floats vs. just
+    # a 'f.read()' for the input file.
+    elif generate_expr is not None:
+        input_stream = eval(
+            [generate_expr],
+            [object],  # Need something to iterate over
+            variable='_'  # Obfuscate the scope a bit
+        )
+
+        input_stream = next(input_stream)
+        if not isinstance(input_stream, Iterable):
+            print(
+                f"ERROR: '--gen' expression did not produce an iterable"
+                f" object:", generate_expr, file=sys.stderr)
+            return 1
+
+        # --skip
+        input_stream = (i for i in input_stream)
+        for _ in range(skip_lines):
+            try:
+                next(input_stream)
+            except StopIteration:
+                break
+
+        if block:
+            input_stream = [input_stream]
+
+    # Reading from the input file. Need to handle '--block' and '--skip' due
+    # to inherent differences for what these mean for '--gen'.
     else:
-        iterable = (l.rstrip(os.linesep) for l in input_stream)
 
-    for line in pmap(expressions, iterable):
+        # --skip
+        for _ in range(skip_lines):
+            try:
+                next(infile)
+            except StopIteration:
+                break
+
+        if block:
+            input_stream = [infile.read()]
+        else:
+            input_stream = infile
+
+        # Strip newline characters. They are added later.
+        input_stream = (i.rstrip(os.linesep) for i in input_stream)
+
+    # ==== Process Data ==== #
+
+    for line in eval(expressions, input_stream):
 
         if isinstance(line, str):
             pass
@@ -427,7 +563,21 @@ def _cli_entrypoint(rawargs: Optional[list] = None):
 
     args = cli_parser().parse_args(args=rawargs)
 
-    exit(main(**vars(args)))
+    try:
+        exit_code = main(**vars(args))
+
+    # Some conflicting arguments/states can only be detected at runtime
+    except argparse.ArgumentError as e:
+        print("ERROR:", e.message, file=sys.stderr)
+        exit_code = 1
+
+    # User interrupted with '^C' most likely, but technically this is just
+    # a SIGINT.
+    except KeyboardInterrupt:
+        print()  # Don't get a trailing newline otherwise
+        exit_code = 128 + signal.SIGINT
+
+    exit(exit_code)
 
 
 if __name__ == '__main__':
