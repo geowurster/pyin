@@ -144,3 +144,73 @@ def test_catch_IOError(path_csv_with_header):
     result = subprocess.check_output(
         "cat {} | pyin line | head -1".format(path_csv_with_header), shell=True)
     assert result.decode().strip() == '"field1","field2","field3"'.strip()
+
+
+def test_gen(runner):
+
+    """``--gen`` to generate input."""
+
+    result = runner.invoke(_cli_entrypoint, ['--gen', 'range(3)', "line + 1"])
+    expected = os.linesep.join(map(str, range(1, 4))) + os.linesep
+
+    assert result.exit_code == 0
+    assert not result.err
+    assert expected == result.output
+
+
+def test_gen_stdin(runner):
+
+    """``--gen`` combined with piping data to ``stdin`` is not allowed."""
+
+    result = runner.invoke(_cli_entrypoint, ['--gen', 'range(3)'], input="trash")
+
+    assert result.exit_code == 1
+    assert not result.output
+    for item in ('cannot combine', '--gen', 'stdin'):
+        assert item in result.err
+
+
+@pytest.mark.parametrize("skip,expected", [
+    # Skip 2 out of 3 lines
+    (2, '2' + os.linesep),
+    # Skip exactly all lines
+    (3, ""),
+    # Skip too many lines
+    (4, "")
+])
+def test_gen_skip(runner, skip, expected):
+
+    """Combine ``--gen`` with ``--skip``."""
+
+    result = runner.invoke(
+        _cli_entrypoint,
+        ['--gen', 'range(3)', '--skip', str(skip)])
+
+    assert result.exit_code == 0
+    assert not result.err
+    assert result.output == expected
+
+
+def test_gen_not_iterable(runner):
+
+    """``--gen`` does not produce an iterable object."""
+
+    result = runner.invoke(_cli_entrypoint, ['--gen', '1'])
+
+    assert result.exit_code == 1
+    assert not result.output
+    for item in ('--gen', 'iterable object'):
+        assert item in result.err
+
+
+def test_gen_block(runner):
+
+    """``--gen`` combined with ``--block``."""
+
+    result = runner.invoke(
+        _cli_entrypoint,
+        ['--gen', 'range(3)', '--block', 'line'])
+
+    assert result.exit_code == 0
+    assert not result.err
+    assert result.output == '[0, 1, 2]' + os.linesep
