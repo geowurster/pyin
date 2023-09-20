@@ -21,6 +21,7 @@ def test_single_expr(runner, csv_with_header_content):
         "line.upper()"
     ], input=csv_with_header_content)
     assert result.exit_code == 0
+    assert not result.err
     assert result.output.strip() == csv_with_header_content.upper().strip()
 
 
@@ -39,6 +40,7 @@ def test_multiple_expr(runner, path_csv_with_header):
         "'END' if 'l5' in line else line"
     ])
     assert result.exit_code == 0
+    assert not result.err
     assert result.output.strip() == expected.strip()
 
 
@@ -47,6 +49,7 @@ def test_with_generator(runner, csv_with_header_content):
         "(i for i in line)"
     ], input=csv_with_header_content)
     assert result.exit_code == 0
+    assert not result.err
     assert os.linesep.join(
         [json.dumps(list((i for i in line))) for line in csv_with_header_content.splitlines()])
 
@@ -56,6 +59,7 @@ def test_with_blank_lines(runner):
         'line'
     ], input="")
     assert result.exit_code == 0
+    assert not result.err
     assert result.output == ''
 
 
@@ -69,6 +73,7 @@ def test_block_mode(runner):
         "{k: v for k, v in line.items() if int(k) in range(5)}"
     ], input=text)
     assert result.exit_code == 0
+    assert not result.err
 
     expected = '{"3": null, "4": null, "0": null, "2": null, "1": null}'
     assert json.loads(expected) == json.loads(result.output)
@@ -81,6 +86,7 @@ def test_unicode(runner):
         'line.upper()'
     ], input=text)
     assert result.exit_code == 0
+    assert not result.err
     assert result.output.strip() == text.strip().upper()
 
 
@@ -91,6 +97,7 @@ def test_skip_single_line(runner, skip_lines, csv_with_header_content):
         'line'
     ], input=csv_with_header_content)
     assert result.exit_code == 0
+    assert not result.err
     expected = os.linesep.join(csv_with_header_content.splitlines()[skip_lines:])
     assert result.output.strip() == expected.strip()
 
@@ -101,6 +108,7 @@ def test_skip_all_input(runner, csv_with_header_content):
         'line'
     ], input=csv_with_header_content)
     assert result.exit_code == 0
+    assert not result.err
     assert result.output == ""
 
 
@@ -119,6 +127,7 @@ def test_repr(runner):
     ], input=text)
 
     assert result.exit_code == 0
+    assert not result.err
     assert result.output.strip() == textwrap.dedent("""
     datetime.datetime(2015, 1, 1, 0, 0)
     datetime.datetime(2015, 1, 2, 0, 0)
