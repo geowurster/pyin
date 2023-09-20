@@ -14,7 +14,7 @@ import os
 import re
 import traceback
 from types import CodeType
-from typing import Iterable, Optional, Sequence, TextIO, Tuple, Union
+from typing import Callable, Iterable, Optional, Sequence, TextIO, Tuple, Union
 
 
 __version__ = '0.5.4'
@@ -56,6 +56,31 @@ _DEFAULT_VARIABLE = 'i'
 _IMPORTER_REGEX = re.compile(r"([a-zA-Z_.][a-zA-Z0-9_.]*)")
 
 
+
+def _normalize_expressions(f: Callable) -> Callable:
+
+    """Ensure functions can receive single or multiple expressions.
+
+    Function's first positional argument must be called ``expressions``.
+
+    :param f:
+        Decorated function.
+    """
+
+    @functools.wraps(f)
+    def inner(expressions, *args, **kwargs):
+
+        if isinstance(expressions, str):
+            expressions = (expressions, )
+        elif not isinstance(expressions, Sequence):
+            raise TypeError(f"not a sequence: {expressions=}")
+
+        return f(tuple(expressions), *args, **kwargs)
+
+    return inner
+
+
+@_normalize_expressions
 def compile(expressions: Union[str, Sequence[str]]) -> Tuple[CodeType]:
 
     """Compile expressions to Python :module:`code` objects.
@@ -83,6 +108,7 @@ def compile(expressions: Union[str, Sequence[str]]) -> Tuple[CodeType]:
     return tuple(compiled)
 
 
+@_normalize_expressions
 def importer(
         expressions: Union[str, Sequence[str]],
         scope: Optional[dict] = None
@@ -146,6 +172,7 @@ def importer(
     return scope
 
 
+@_normalize_expressions
 def eval(expressions, iterable, variable='line'):
 
     """Map Python expressions across a stream of data.
@@ -272,11 +299,6 @@ def eval(expressions, iterable, variable='line'):
         Expressions reference this variable to access objects from `iterator`
         during processing.
     """
-
-    if isinstance(expressions, str):
-        expressions = expressions,
-    else:
-        expressions = tuple(expressions)
 
     global_scope = {
         'it': it,
