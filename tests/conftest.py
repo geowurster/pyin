@@ -60,7 +60,8 @@ and emerged out of the path of least resistance.
 from contextlib import ExitStack, redirect_stderr, redirect_stdout
 from io import StringIO
 import os.path
-from typing import Callable, Optional
+from types import MethodType
+from typing import Callable
 from unittest import mock
 
 import pytest
@@ -102,17 +103,20 @@ class PyinCliRunner:
     As with ``CliRunner()``, this class captures ``stderr`` and ``stdoutt``.
     """
 
-    def __init__(self, *, exit_code: int, output: str):
+    def __init__(self, *, exit_code: int, output: str, err: str):
 
         """
         :param exit_code:
             Program exit code.
         :param output:
             Contents of ``stdout``.
+        :param err:
+            Contents of ``stderr``.
         """
 
         self.exit_code = exit_code
         self.output = output
+        self.err = err
 
     @classmethod
     def invoke(
@@ -120,7 +124,7 @@ class PyinCliRunner:
             func: Callable,
             rawargs: list,
             *,
-            input: Optional[str] = ""
+            input: str | None = None
     ) -> "CliRunner":
 
         """Execute a command and return the result.
@@ -131,7 +135,9 @@ class PyinCliRunner:
             A list of unparsed arguments. Like :obj:`sys.argv` but without
             the interpreter path.
         :param input:
-            Replace :obj:`sys.stdin` with this string.
+            Replace :obj:`sys.stdin` with a :obj:`io.StringIO` instance
+            containing this data. Note that the mocked :meth:`sys.stdin.isatty`
+            is also mocked to report ``False`` in this case.
         """
 
         if not all(isinstance(i, str) for i in rawargs):
@@ -142,7 +148,19 @@ class PyinCliRunner:
         stderr = StringIO()
         stdout = StringIO()
 
+        # When passing data to place in 'stdin', be sure to mock
+        # 'sys.stdin.isatty()' properly. Even piping an empty string to a
+        # processing counts as a non-interactive session, as evidenced by
+        # this reporting 'False':
+        #   echo "" | python -c "import sys; print(sys.stdin.isatty())"
+        if input is None:
+            isatty = True
+        else:
+            isatty = False
+        stdin.isatty = MethodType(lambda self: isatty, stdin)
+
         with ExitStack() as stack:
+
             stack.enter_context(mock.patch('sys.stdin', new=stdin))
             stack.enter_context(redirect_stderr(stderr))
             stack.enter_context(redirect_stdout(stdout))
@@ -158,7 +176,8 @@ class PyinCliRunner:
         stderr.seek(0)
         stdout.seek(0)
 
-        if stderr_content := stderr.read():
-            raise RuntimeError(f"stderr: {stderr_content}")
-
-        return cls(exit_code=exit_code, output=stdout.read())
+        return cls(
+            exit_code=exit_code,
+            output=stdout.read(),
+            err=stderr.read()
+        )
