@@ -6,6 +6,7 @@ import builtins
 import functools
 import itertools as it
 import sys
+import signal
 from inspect import isgenerator
 import json
 import operator
@@ -547,6 +548,12 @@ def _cli_entrypoint(rawargs: Optional[list] = None):
     except argparse.ArgumentError as e:
         print("ERROR:", e.message, file=sys.stderr)
         exit_code = 1
+
+    # User interrupted with '^C' most likely, but technically this is just
+    # a SIGINT.
+    except KeyboardInterrupt:
+        print()  # Don't get a trailing newline otherwise
+        exit_code = 128 + signal.SIGINT
 
     exit(exit_code)
 
