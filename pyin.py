@@ -5,6 +5,7 @@ import argparse
 import builtins
 import functools
 import itertools as it
+import sys
 from inspect import isgenerator
 import json
 import operator
@@ -12,7 +13,7 @@ import os
 import re
 import traceback
 from types import CodeType
-from typing import Optional, Sequence, TextIO, Tuple, Union
+from typing import Iterable, Optional, Sequence, TextIO, Tuple, Union
 
 
 __version__ = '0.5.4'
@@ -188,7 +189,7 @@ def eval(expressions, iterable, variable='line'):
     depending on what comes out of :func:`eval`. There are 3 types of objects
     that an expression can return, and in some cases the object stored in
     ``variable`` is changed:
-    
+
     * ``True`` - The original object from the ``iterator`` is passed to the
       next expression for evaluation. If the last expression produces `True`
       the object is yielded. Whatever is currently stored in ``variable``
@@ -312,7 +313,7 @@ def eval(expressions, iterable, variable='line'):
 
         # Have to explicitly let string_types through for ''
         # which would otherwise be ignored.
-        if isinstance(obj, str) or obj:
+        if isinstance(obj, str) or isinstance(obj, (int, float)) or obj:
             yield obj
 
 
@@ -378,10 +379,18 @@ def cli_parser() -> argparse.ArgumentParser:
     aparser.add_argument(
         '--version', action='version', version=__version__
     )
-    aparser.add_argument(
-        '-i', '--infile', type=argparse.FileType('r'), default='-',
-        help="Process this file. Use '-' for stdin (the default)."
+
+    # Input data
+    input_group = aparser.add_mutually_exclusive_group()
+    input_group.add_argument(
+        '--gen', metavar='EXPR', dest='generate_expr',
+        help="Execute expression and feed results into other expressions."
     )
+    input_group.add_argument(
+        '-i', '--infile', type=argparse.FileType('r'), default='-',
+        help="Read input from this file. Use '-' for stdin (the default)."
+    )
+
     aparser.add_argument(
         '-o', '--outfile', metavar='PATH',
         type=argparse.FileType('w'), default='-',
@@ -408,6 +417,7 @@ def cli_parser() -> argparse.ArgumentParser:
 
 
 def main(
+        generate_expr: Optional[str],
         infile: TextIO,
         outfile: TextIO,
         expressions: list[str],
@@ -421,6 +431,8 @@ def main(
     Direct access to the CLI logic. :obj:`argparse.ArgumentParser` can be
     accessed with :func:`parser`.
 
+    :param generate_expr:
+        Generate input data from this expression instead of ``infile``.
     :param infile:
         Read text from this file.
     :param outfile:
@@ -441,20 +453,63 @@ def main(
         Exit code.
     """
 
-    input_stream = (i for i in infile)
+    # ==== Fetch Input Data Stream ==== #
 
-    for _ in range(skip_lines):
-        try:
-            next(input_stream)
-        except StopIteration:
-            return 0
+    # Piping data to stdin combined with '--gen' is not allowed.
+    if generate_expr is not None and not infile.isatty():
+        raise argparse.ArgumentError(
+            None, "cannot combine '--gen' with piping data to stdin")
 
-    if block:
-        iterable = [infile.read()]
+    # Generating data for input. Must also handle '--block' because the
+    # behavior differs for something like a sequence of floats vs. just
+    # a 'f.read()' for the input file.
+    elif generate_expr is not None:
+        input_stream = eval(
+            [generate_expr],
+            [object],  # Need something to iterate over
+            variable='_'  # Obfuscate the scope a bit
+        )
+
+        input_stream = next(input_stream)
+        if not isinstance(input_stream, Iterable):
+            print(
+                f"ERROR: '--gen' expression did not produce an iterable"
+                f" object:", generate_expr, file=sys.stderr)
+            return 1
+
+        # --skip
+        input_stream = (i for i in input_stream)
+        for _ in range(skip_lines):
+            try:
+                next(input_stream)
+            except StopIteration:
+                break
+
+        if block:
+            input_stream = [input_stream]
+
+    # Reading from the input file. Need to handle '--block' and '--skip' due
+    # to inherent differences for what these mean for '--gen'.
     else:
-        iterable = (l.rstrip(os.linesep) for l in input_stream)
 
-    for line in eval(expressions, iterable):
+        # --skip
+        for _ in range(skip_lines):
+            try:
+                next(infile)
+            except StopIteration:
+                break
+
+        if block:
+            input_stream = [infile.read()]
+        else:
+            input_stream = infile
+
+        # Strip newline characters. They are added later.
+        input_stream = (i.rstrip(os.linesep) for i in input_stream)
+
+    # ==== Process Data ==== #
+
+    for line in eval(expressions, input_stream):
 
         if isinstance(line, str):
             pass
@@ -485,7 +540,15 @@ def _cli_entrypoint(rawargs: Optional[list] = None):
 
     args = cli_parser().parse_args(args=rawargs)
 
-    exit(main(**vars(args)))
+    try:
+        exit_code = main(**vars(args))
+
+    # Some conflicting arguments/states can only be detected at runtime
+    except argparse.ArgumentError as e:
+        print("ERROR:", e.message, file=sys.stderr)
+        exit_code = 1
+
+    exit(exit_code)
 
 
 if __name__ == '__main__':
