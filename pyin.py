@@ -14,7 +14,7 @@ import os
 import re
 from types import CodeType
 from typing import (
-    Any, Callable, Iterable, Optional, Sequence, TextIO, Tuple, Union)
+    Any, Callable, Iterable, List, Optional, Sequence, TextIO, Tuple, Union)
 
 
 __all__ = ['eval']
@@ -85,9 +85,9 @@ def _normalize_expressions(f: Callable) -> Callable:
 
 @_normalize_expressions
 def compile(
-        expressions: str | Sequence[str],
+        expressions: Union[str, Sequence[str]],
         variable: str = _DEFAULT_VARIABLE,
-        scope: None | dict = None
+        scope: Union[None, dict] = None
 ) -> Tuple[CodeType]:
 
     """Compile expressions to Python :module:`code` objects.
@@ -672,7 +672,7 @@ def main(
         generate_expr: Optional[str],
         infile: TextIO,
         outfile: TextIO,
-        expressions: list[str],
+        expressions: List[str],
         no_newline: bool,
         block: bool,
         skip_lines: int

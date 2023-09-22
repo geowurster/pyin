@@ -61,7 +61,7 @@ from contextlib import ExitStack, redirect_stderr, redirect_stdout
 from io import StringIO
 import os.path
 from types import MethodType
-from typing import Callable
+from typing import Callable, Union
 from unittest import mock
 
 import pytest
@@ -124,7 +124,7 @@ class PyinCliRunner:
             func: Callable,
             rawargs: list,
             *,
-            input: str | None = None
+            input: Union[str, None] = None
     ) -> "CliRunner":
 
         """Execute a command and return the result.
