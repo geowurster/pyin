@@ -1,20 +1,20 @@
 """It's like ``sed``, but Python!"""
 
 
+import abc
 import argparse
 import builtins
 import functools
+import inspect
 import itertools as it
 import sys
 import signal
-from inspect import isgenerator
-import json
-import operator
+import operator as op
 import os
 import re
-import traceback
 from types import CodeType
-from typing import Callable, Iterable, Optional, Sequence, TextIO, Tuple, Union
+from typing import (
+    Any, Callable, Iterable, List, Optional, Sequence, TextIO, Tuple, Union)
 
 
 __version__ = '0.5.4'
@@ -52,9 +52,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 '''
 
 
-_DEFAULT_VARIABLE = 'i'
+_DEFAULT_VARIABLE = 'line'
 _IMPORTER_REGEX = re.compile(r"([a-zA-Z_.][a-zA-Z0-9_.]*)")
-
+_DIRECTIVE_REGISTRY = {}
 
 
 def _normalize_expressions(f: Callable) -> Callable:
@@ -81,7 +81,11 @@ def _normalize_expressions(f: Callable) -> Callable:
 
 
 @_normalize_expressions
-def compile(expressions: Union[str, Sequence[str]]) -> Tuple[CodeType]:
+def compile(
+        expressions: Union[str, Sequence[str]],
+        variable: str = _DEFAULT_VARIABLE,
+        scope: Union[None, dict] = None
+) -> Tuple[CodeType]:
 
     """Compile expressions to Python :module:`code` objects.
 
@@ -94,16 +98,56 @@ def compile(expressions: Union[str, Sequence[str]]) -> Tuple[CodeType]:
     """
 
     compiled = []
+    if scope is None:
+        scope = {}
 
-    for expr in expressions:
-        try:
-            code = builtins.compile(expr, '<expression>', 'eval')
-        except SyntaxError as e:
-            msg = (f"could not compile expression:"
-                   f" {expr}{os.linesep}{os.linesep}{traceback.format_exc(0)}")
-            raise SyntaxError(msg) from e
+    tokens = list(expressions)
+    del expressions
 
-        compiled.append(code)
+    # Check for empty strings in expressions. A check with 'all(tokens)' may
+    # be sufficient, but could be confused by '__bool__()'.
+    if not all(len(t) for t in tokens):
+        raise SyntaxError(
+            f"one or more expression is an empty string:"
+            f" {' '.join(map(repr, tokens))}")
+
+    while tokens:
+
+        # Get a directive
+        directive = tokens.pop(0)
+
+        # If it is not actually a directive just assume it is a Python
+        # expression that should be evaluated. Stick the token back in the
+        # queue so that it can be evaluated as an argument - makes the rest
+        # of the code simpler.
+        if directive[0] != '%':
+            tokens.insert(0, directive)
+            directive = Eval.directives[0]
+
+        if directive not in _DIRECTIVE_REGISTRY:
+            raise ValueError(f'invalid directive: {directive}')
+        cls = _DIRECTIVE_REGISTRY[directive]
+
+        # Operation classes define how many arguments are associated with the
+        # directives they service with annotated positional-only arguments.
+        # Find them.
+
+        sig = inspect.signature(cls.__init__)
+        pos_only = [
+            p for p in sig.parameters.values()
+            if p.kind == p.POSITIONAL_ONLY
+        ]
+        pos_only = pos_only[1:]  # First is 'self'
+
+        # Arguments for instantiating argument class
+        args = [directive]
+        args.extend(p.annotation(tokens.pop(0)) for p in pos_only[1:])
+        kwargs = {
+            'variable': variable,
+            'scope': scope
+        }
+
+        compiled.append(cls(*args, **kwargs))
 
     return tuple(compiled)
 
@@ -173,7 +217,7 @@ def importer(
 
 
 @_normalize_expressions
-def eval(expressions, iterable, variable='line'):
+def eval(expressions, stream, variable: str = _DEFAULT_VARIABLE):
 
     """Map Python expressions across a stream of data.
 
@@ -300,44 +344,228 @@ def eval(expressions, iterable, variable='line'):
         during processing.
     """
 
-    global_scope = {
+    scope = {
         'it': it,
-        'op': operator,
-        'reduce': functools.reduce}
+        'op': op,
+        'reduce': functools.reduce
+    }
+    if all(isinstance(e, str) for e in expressions):
+        importer(expressions, scope=scope)
 
-    importer(expressions, scope=global_scope)
-    compiled_expressions = compile(expressions)
+    compiled_expressions = compile(expressions, variable=variable, scope=scope)
 
-    for idx, obj in enumerate(iterable):
+    for callable in compiled_expressions:
+        stream = callable(stream)
 
-        for expr in compiled_expressions:
+    yield from stream
 
-            result = builtins.eval(
-                expr, global_scope, {'idx': idx, variable: obj})
 
-            # Got a generator.  Expand and continue.
-            if isgenerator(result):
-                obj = list(result)
+###############################################################################
+# Operations
 
-            # Result is some object.  Pass it back in under 'variable'.
-            elif not isinstance(result, bool):
-                obj = result
 
-            # Result is True/False.  Only continue if True.
-            # Have to explicitly let string_types through for ''
-            # which would otherwise be ignored.
-            elif isinstance(result, str) or result:
-                continue
+def _first(sequence: Sequence) -> Tuple[Any, Sequence]:
 
-            # Got something else?  Halt processing for this obj.
-            else:
-                obj = None
-                break
+    """Peek at a stream of data.
 
-        # Have to explicitly let string_types through for ''
-        # which would otherwise be ignored.
-        if isinstance(obj, str) or isinstance(obj, (int, float)) or obj:
-            yield obj
+    Note that the output sequence is not guaranteed to be of the same type
+    as the input sequence. The output sequence is guaranteed to be iterable.
+
+    :param sequence:
+        Peek at first value in this sequence.
+
+    :return:
+        A ``tuple`` with two elements. The first is the next value in
+        ``sequence``, and the second is the reconstructed sequence.
+    """
+
+    sequence = (i for i in sequence)
+    first = next(sequence)
+    return first, it.chain([first], sequence)
+
+
+class _DelayedClassVar:
+
+    """Descriptor for a class variable that is assigned a value at a later time
+
+    For use with subclassers of :obj:`BaseOperation`. In some cases we need
+    to define a class variable that can only be populated later. Normally
+    values that need to be attached to an instance are passed to that class's
+    constructor methods, however :obj:`BaseOperation` gives subclassers full
+    control over their ``__init__`` method so that they may define additional
+    arguments. This subclasser provides a place for these attributes to live,
+    and ensures that they cannot be read until they are set.
+    """
+
+    def __init__(self):
+        self.value = object
+        self.has_been_set = False
+
+    def __set_name__(self, owner: Any, name: str) -> None:
+
+        """Record the name of the attribute this instance is attached to."""
+
+        self.name = name
+
+    def __get__(self, instance: Any, owner: str) -> Any:
+
+        """Get value, but only if one has been set."""
+
+        if not self.has_been_set:
+            raise RuntimeError(
+                f"'{instance.__class__.__name__}.{self.name}' has not been"
+                f" assigned a value"
+            )
+        return self.value
+
+    def __set__(self, instance: Any, value: str) -> None:
+
+        """Set value."""
+
+        self.value = value
+        self.has_been_set = True
+
+
+class BaseOperation(abc.ABC):
+
+    """Base class for defining an operation.
+
+    Subclassers can use positional-only arguments and type annotations in
+    :meth:`__init__` to define arguments associated with the directive and
+    their type.
+    """
+
+    # All directives declared to be supported by this class.
+    directives = _DelayedClassVar()
+
+    def __init__(self, directive: str, /, variable: str, scope: dict):
+
+        """
+        :param directive:
+            The directive actually usd in the expressions. Some operation
+            classes can support multiple directives.
+        :param variable:
+            Operations executing expressions with Python's :obj:`eval` should
+            place data in this variable in the scope.
+        :param scope:
+            Operations executing expressions with Python's :obj:`eval` should
+            execute in this scope.
+        """
+
+        self.directive = directive
+        self.variable = variable
+        self.scope = scope
+
+    def __init_subclass__(cls, /, directives: Sequence, **kwargs):
+
+        """Register mapping of directives to classes.
+
+        Also populates ``Operations.directives`` class variable.
+
+        :param directives:
+            Sequence of directives like ``('%upper', '%lower')`` supported by
+            this class.
+        :param **kwargs:
+            Arguments for class.
+        """
+
+        super().__init_subclass__(**kwargs)
+
+        global _DIRECTIVE_REGISTRY
+
+        for d in directives:
+            if d in _DIRECTIVE_REGISTRY:
+                raise RuntimeError(
+                    f"directive '{d}' conflict:"
+                    f" {cls} {_DIRECTIVE_REGISTRY[d]}")
+
+            cls.directives = directives
+            _DIRECTIVE_REGISTRY[d] = cls
+
+    def __repr__(self) -> str:
+
+        # Possible for some machinery to be broken that would cause this
+        # method to be called before 'directives' is set?
+        try:
+            directive = self.directive
+        except RuntimeError:
+            directive = "<directive not yet set>"
+        return f"<{self.__class__.__name__}({directive})>"
+
+    @abc.abstractmethod
+    def __call__(self, stream: Sequence) -> Sequence:
+
+        """Process a stream of data.
+
+        :param stream:
+            Input data stream.
+
+        :return:
+            Altered data.
+        """
+
+        raise NotImplementedError
+
+
+class Eval(BaseOperation, directives=('%eval', )):
+
+    """Evaluate a Python expression with :obj:`eval`.
+
+    .. note::
+
+        This operation receives special treatment in :func:`compile`, but its
+        subclassers do not. When parsing the input expressions, any expression
+        not associated with a directive is assumed to be a generic Python
+        expression that should be handled by this class. Users may still use
+        the ``%eval`` directive.
+    """
+
+    def __init__(self, directive: str, expression: str, /, **kwargs):
+
+        """
+        :param expression:
+            Python expression.
+        """
+
+        super().__init__(directive, **kwargs)
+
+        self.expression = expression
+        self.compiled_expression = builtins.compile(
+            self.expression, '<string>', 'eval')
+
+    def __call__(self, stream: Iterable):
+
+        # Attribute lookup is not free
+        expr = self.compiled_expression
+        variable = self.variable
+        scope = self.scope
+        builtins_eval = builtins.eval
+
+        for item in stream:
+            yield builtins_eval(expr, scope, {variable: item})
+
+
+class Filter(Eval, directives=('%filter', '%filterfalse')):
+
+    """Filter data based on a Python expression.
+
+    These are equivalent:
+
+    .. code-block::
+
+        %filter "i > 2"
+        %filterfalse "i <= 2"
+    """
+
+    def __call__(self, stream: Sequence) -> Sequence:
+
+        stream, selection = it.tee(stream, 2)
+        selection = super().__call__(selection)
+
+        if self.directive == '%filterfalse':
+            selection = (not s for s in selection)
+
+        return it.compress(stream, selection)
 
 
 ###############################################################################
@@ -443,7 +671,7 @@ def main(
         generate_expr: Optional[str],
         infile: TextIO,
         outfile: TextIO,
-        expressions: list[str],
+        expressions: List[str],
         no_newline: bool,
         block: bool,
         skip_lines: int
@@ -478,8 +706,15 @@ def main(
 
     # ==== Fetch Input Data Stream ==== #
 
+    # Equivalent to just invoking '$ pyin'. No input files, no piping data
+    # to 'stdin', and no '--gen' flag. Technically users can type data into
+    # 'stdin' in this mode, but that doesn't seem very useful.
+    if generate_expr is None and infile.isatty():
+        cli_parser().print_help()
+        return 2
+
     # Piping data to stdin combined with '--gen' is not allowed.
-    if generate_expr is not None and not infile.isatty():
+    elif generate_expr is not None and not infile.isatty():
         raise argparse.ArgumentError(
             None, "cannot combine '--gen' with piping data to stdin")
 
@@ -534,17 +769,12 @@ def main(
 
     for line in eval(expressions, input_stream):
 
-        if isinstance(line, str):
-            pass
-        elif isinstance(line, (list, tuple, dict)):
-            line = json.dumps(line)
-        else:
+        if not isinstance(line, str):
             line = repr(line)
 
-        if not no_newline and not line.endswith(os.linesep):
-            line += os.linesep
-
         outfile.write(line)
+        if not line.endswith(os.linesep):
+            outfile.write(os.linesep)
 
     return 0
 
@@ -576,6 +806,11 @@ def _cli_entrypoint(rawargs: Optional[list] = None):
     except KeyboardInterrupt:
         print()  # Don't get a trailing newline otherwise
         exit_code = 128 + signal.SIGINT
+
+    # Generic error reporting
+    except Exception as e:
+        print("ERROR:", str(e), file=sys.stderr)
+        return 1
 
     exit(exit_code)
 
