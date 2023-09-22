@@ -704,8 +704,15 @@ def main(
 
     # ==== Fetch Input Data Stream ==== #
 
+    # Equivalent to just invoking '$ pyin'. No input files, no piping data
+    # to 'stdin', and no '--gen' flag. Technically users can type data into
+    # 'stdin' in this mode, but that doesn't seem very useful.
+    if generate_expr is None and infile.isatty():
+        cli_parser().print_help()
+        return 2
+
     # Piping data to stdin combined with '--gen' is not allowed.
-    if generate_expr is not None and not infile.isatty():
+    elif generate_expr is not None and not infile.isatty():
         raise argparse.ArgumentError(
             None, "cannot combine '--gen' with piping data to stdin")
 
