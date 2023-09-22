@@ -28,14 +28,14 @@ def test_single_expr(runner, csv_with_header_content):
 def test_multiple_expr(runner, path_csv_with_header):
     expected = os.linesep.join((
         '"FIELD1","FIELD2","FIELD3"',
-        '["l2f1,l2f2,l2f3"]',
+        "['l2f1,l2f2,l2f3']",
         '"l3f1","l3f2","l3f3"',
         '"l4f1","l4f2","l4f3"',
         'END'))
     result = runner.invoke(_cli_entrypoint, [
         '-i', path_csv_with_header,
         "line.upper() if 'field' in line else line",
-        "'l1' not in line",
+        "%filter", "'l1' not in line",
         "line.replace('\"', '').split() if 'l2' in line else line",
         "'END' if 'l5' in line else line"
     ])
@@ -70,7 +70,10 @@ def test_block_mode(runner):
     result = runner.invoke(_cli_entrypoint, [
         "--block",
         "json.loads(line)",
-        "{k: v for k, v in line.items() if int(k) in range(5)}"
+        # 'int(k)' below is because only strings can be keys in JSON, so
+        # the key is being cast to an integer.
+        "{k: v for k, v in line.items() if int(k) in range(5)}",
+        "json.dumps(line)"
     ], input=text)
     assert result.exit_code == 0
     assert not result.err
@@ -123,7 +126,7 @@ def test_repr(runner):
     result = runner.invoke(_cli_entrypoint, [
         "line.strip()",
         "datetime.datetime.strptime(line, '%Y-%m-%d')",
-        "isinstance(line, datetime.datetime)"
+        "%filter", "isinstance(line, datetime.datetime)"
     ], input=text)
 
     assert result.exit_code == 0
@@ -209,7 +212,7 @@ def test_gen_block(runner):
 
     result = runner.invoke(
         _cli_entrypoint,
-        ['--gen', 'range(3)', '--block', 'line'])
+        ['--gen', 'range(3)', '--block', 'list(line)'])
 
     assert result.exit_code == 0
     assert not result.err
