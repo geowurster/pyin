@@ -124,6 +124,8 @@ def compile(
             tokens.insert(0, directive)
             directive = Eval.directives[0]
 
+        if directive not in _DIRECTIVE_REGISTRY:
+            raise ValueError(f'invalid directive: {directive}')
         cls = _DIRECTIVE_REGISTRY[directive]
 
         # Operation classes define how many arguments are associated with the
@@ -804,6 +806,11 @@ def _cli_entrypoint(rawargs: Optional[list] = None):
     except KeyboardInterrupt:
         print()  # Don't get a trailing newline otherwise
         exit_code = 128 + signal.SIGINT
+
+    # Generic error reporting
+    except Exception as e:
+        print("ERROR:", str(e), file=sys.stderr)
+        return 1
 
     exit(exit_code)
 
