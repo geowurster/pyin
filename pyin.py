@@ -571,6 +571,23 @@ class Filter(Eval, directives=('%filter', '%filterfalse')):
         return it.compress(stream, selection)
 
 
+class Accumulate(
+    BaseOperation, directives=('%acc', '%accumulate', '%collect')):
+
+    """Accumulate the entire stream into a single object."""
+
+    def __call__(self, stream):
+        yield list(stream)
+
+
+class Flatten(BaseOperation, directives=('%explode', '%flatten', '%chain')):
+
+    """Flatten the stream by one level – like :obj:`itertools.chain`."""
+
+    def __call__(self, stream):
+        return it.chain.from_iterable(stream)
+
+
 ###############################################################################
 # Command Line Interface
 
