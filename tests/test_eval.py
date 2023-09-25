@@ -1,4 +1,8 @@
-"""Tests for core :module:`pyin` functionality."""
+"""Tests for :func:`pyin.eval`.
+
+Look for integrity and overall feature correctness. Test specific operations
+and interactions between directives, etc. elsewhere.
+"""
 
 
 import pytest
