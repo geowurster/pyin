@@ -1,9 +1,4 @@
-# -*- coding: utf-8 -*-
-
-
-"""
-Unittests for $ pyin
-"""
+"""Tests for ``$ pyin`` command line interface."""
 
 
 import json
