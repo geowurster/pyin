@@ -1,10 +1,13 @@
-"""Tests for core :module:`pyin` functionality."""
+"""Tests for :func:`pyin.eval`.
+
+Look for integrity and overall feature correctness. Test specific operations
+and interactions between directives, etc. elsewhere.
+"""
 
 
 import pytest
 
 import pyin
-import tests._test_module
 
 
 def test_single_expr():
@@ -42,3 +45,16 @@ def test_floating_point_division():
 def test_invalid_expression(expression):
     with pytest.raises(SyntaxError):
         next(pyin.eval(expression, []))
+
+
+def test_with_generator():
+
+    """Generators are valid expressions."""
+
+    expressions = [
+        '(i for i in line)',
+        'inspect.isgenerator(line)'
+    ]
+    results = list(pyin.eval(expressions, ['word']))
+
+    assert results == [True]
