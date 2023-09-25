@@ -4,8 +4,6 @@
 import pytest
 
 import pyin
-import tests._test_module
-
 
 def test_single_expr():
     result = list(pyin.eval(["%filter", "20 <= line <= 80"], range(100)))
