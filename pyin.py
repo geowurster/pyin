@@ -98,6 +98,12 @@ def compile(
     """
 
     compiled = []
+
+    # Note that 'scope = scope or {}' is different from 'if scope is None'.
+    # The latter always creates a new dict if the caller does not pass one,
+    # and the latter creates a new dict if the caller passes an empty dict.
+    # The former makes it impossible to update an existing empty scope, while
+    # the latter does not.
     if scope is None:
         scope = {}
 
@@ -155,7 +161,7 @@ def compile(
 @_normalize_expressions
 def importer(
         expressions: Union[str, Sequence[str]],
-        scope: Optional[dict] = None
+        scope: dict
 ) -> dict:
 
     """Parse expressions and import modules into a single scope.
@@ -169,12 +175,8 @@ def importer(
         Look through these expressions and attempt to import anything that
         looks like a reference to a module.
     :param scope:
-        Import modules into this scope. By default, a new scope is created
-        with every call, but data can be imported into an existing scope by
-        passing a dictionary.
+        Import modules into this scope. For use with Python's :func:`eval`.
     """
-
-    scope = scope or {}
 
     # Find all potential modules to try and import
     all_matches = set(it.chain.from_iterable(
@@ -384,48 +386,6 @@ def _first(sequence: Sequence) -> Tuple[Any, Sequence]:
     return first, it.chain([first], sequence)
 
 
-class _DelayedClassVar:
-
-    """Descriptor for a class variable that is assigned a value at a later time
-
-    For use with subclassers of :obj:`BaseOperation`. In some cases we need
-    to define a class variable that can only be populated later. Normally
-    values that need to be attached to an instance are passed to that class's
-    constructor methods, however :obj:`BaseOperation` gives subclassers full
-    control over their ``__init__`` method so that they may define additional
-    arguments. This subclasser provides a place for these attributes to live,
-    and ensures that they cannot be read until they are set.
-    """
-
-    def __init__(self):
-        self.value = object
-        self.has_been_set = False
-
-    def __set_name__(self, owner: Any, name: str) -> None:
-
-        """Record the name of the attribute this instance is attached to."""
-
-        self.name = name
-
-    def __get__(self, instance: Any, owner: str) -> Any:
-
-        """Get value, but only if one has been set."""
-
-        if not self.has_been_set:
-            raise RuntimeError(
-                f"'{instance.__class__.__name__}.{self.name}' has not been"
-                f" assigned a value"
-            )
-        return self.value
-
-    def __set__(self, instance: Any, value: str) -> None:
-
-        """Set value."""
-
-        self.value = value
-        self.has_been_set = True
-
-
 class BaseOperation(abc.ABC):
 
     """Base class for defining an operation.
@@ -434,9 +394,6 @@ class BaseOperation(abc.ABC):
     :meth:`__init__` to define arguments associated with the directive and
     their type.
     """
-
-    # All directives declared to be supported by this class.
-    directives = _DelayedClassVar()
 
     def __init__(self, directive: str, /, variable: str, scope: dict):
 
@@ -455,6 +412,13 @@ class BaseOperation(abc.ABC):
         self.directive = directive
         self.variable = variable
         self.scope = scope
+
+        if self.directive not in self.directives:
+            raise ValueError(
+                f"instantiated '{repr(self)}' with directive"
+                f" '{self.directive}' but supports:"
+                f" {' '.join(self.directives)}"
+            )
 
     def __init_subclass__(cls, /, directives: Sequence, **kwargs):
 
@@ -484,13 +448,9 @@ class BaseOperation(abc.ABC):
 
     def __repr__(self) -> str:
 
-        # Possible for some machinery to be broken that would cause this
-        # method to be called before 'directives' is set?
-        try:
-            directive = self.directive
-        except RuntimeError:
-            directive = "<directive not yet set>"
-        return f"<{self.__class__.__name__}({directive})>"
+        """Approximate representation of :obj:`BaseOperation` instance."""
+
+        return f"<{self.__class__.__name__}({self.directive})>"
 
     @abc.abstractmethod
     def __call__(self, stream: Sequence) -> Sequence:
@@ -504,7 +464,7 @@ class BaseOperation(abc.ABC):
             Altered data.
         """
 
-        raise NotImplementedError
+        raise NotImplementedError  # pragma no cover
 
 
 class Eval(BaseOperation, directives=('%eval', )):
@@ -827,10 +787,10 @@ def _cli_entrypoint(rawargs: Optional[list] = None):
     # Generic error reporting
     except Exception as e:
         print("ERROR:", str(e), file=sys.stderr)
-        return 1
+        exit_code = 1
 
     exit(exit_code)
 
 
 if __name__ == '__main__':
-    _cli_entrypoint()
+    _cli_entrypoint()  # pragma no cover
