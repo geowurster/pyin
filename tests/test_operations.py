@@ -88,3 +88,20 @@ def test_BaseOperation_init_directive_mismatch():
         Op('%mismatch', variable='v', scope={})
 
     assert "with directive '%mismatch' but supports: %dir"
+
+
+def test_Eval_syntax_error():
+
+    """Produce a helpful error when encountering :obj:`SyntaxError`.
+
+    :obj:`pyin.Eval` compiles Python expressions to code objects, which can
+    hit a :obj:`SyntaxError`. Be sure that this is translated to a helpful
+    error for the caller.
+    """
+
+    expr = '$ syntax error $'
+    with pytest.raises(SyntaxError) as e:
+        list(pyin.eval(expr, range(1)))
+
+    assert 'contains a syntax error' in str(e.value)
+    assert expr in str(e.value)

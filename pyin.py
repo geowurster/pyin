@@ -494,8 +494,15 @@ class Eval(BaseOperation, directives=('%eval', )):
         super().__init__(directive, **kwargs)
 
         self.expression = expression
-        self.compiled_expression = builtins.compile(
-            self.expression, '<string>', 'eval')
+        try:
+            self.compiled_expression = builtins.compile(
+                self.expression, '<string>', 'eval')
+        except SyntaxError as e:
+            raise SyntaxError(
+                f"expression {repr(self.expression)} contains a syntax error:"
+                f" {e.text}"
+            )
+
 
     def __call__(self, stream: Iterable):
 
