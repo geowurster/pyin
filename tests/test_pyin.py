@@ -1,6 +1,7 @@
 """Tests for ``$ pyin`` command line interface."""
 
 
+from io import StringIO
 import json
 import os
 import subprocess
@@ -8,6 +9,7 @@ import textwrap
 
 import pytest
 
+import pyin
 from pyin import _cli_entrypoint
 
 
@@ -191,3 +193,30 @@ def test_gen_block(runner):
     assert result.exit_code == 0
     assert not result.err
     assert result.output == '[0, 1, 2]' + os.linesep
+
+
+def test_bad_directive(runner):
+
+    """Catch bad directives."""
+
+    result = runner.invoke(_cli_entrypoint, ['--gen', 'range(1)', '%bad'])
+
+    assert result.exit_code == 1
+    assert not result.output
+    assert result.err == 'ERROR: invalid directive: %bad' + os.linesep
+
+
+def test_no_arguments_prints_help(runner):
+
+    """Invoking ``$ pyin`` without any arguments or ``stdin`` prints help."""
+
+    result = runner.invoke(_cli_entrypoint, [])
+
+    with StringIO() as f:
+        pyin.cli_parser().print_help(file=f)
+        f.seek(0)
+        expected = f.read()
+
+    assert result.exit_code == 2
+    assert not result.err
+    assert expected == result.output
