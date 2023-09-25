@@ -5,6 +5,7 @@ import abc
 import argparse
 import builtins
 import functools
+import importlib
 import inspect
 import itertools as it
 import sys
@@ -199,24 +200,27 @@ def importer(
             module, other = split
             other = [other]
 
-        # Shouldn't hit this
+        # I don't think it is possible to actually hit this.
         else:
             raise ImportError("Error importing from: {}".format(match))
 
-        # Are you trying to figure out why relative imports don't work?
-        # If so, the issue is probably `m.split()` producing ['', 'name']
-        # instead of ['.name']. `__import__('.name')__` doesn't appear
-        # to work though, so good luck!
-        if not module:
+        # Try and limit the number of import attempts, but only when confident.
+        if not module or hasattr(builtins, module):
             continue
 
         try:
-            scope[module] = __import__(
-                module,
-                fromlist=list(map(str, other)),
-                level=0)
+            scope[module] = importlib.import_module(module)
+
+        # Failed to import. To be helpful, check and see if the module exists.
+        # if it does, the caller is referencing something that cannot be
+        # imported, like a class method.
         except ImportError:
-            pass
+            res = importlib.util.find_spec(module)
+            if res is not None:
+                raise ImportError(
+                    f"attempting to import something that cannot be imported"
+                    f" from a module that does exist: {match}"
+                )
 
     return scope
 
