@@ -9,6 +9,7 @@ import pytest
 
 import pyin
 
+
 def test_single_expr():
     result = list(pyin.eval(["%filter", "20 <= line <= 80"], range(100)))
     assert len(result) == len(list(range(20, 81)))
@@ -44,3 +45,16 @@ def test_floating_point_division():
 def test_invalid_expression(expression):
     with pytest.raises(SyntaxError):
         next(pyin.eval(expression, []))
+
+
+def test_with_generator():
+
+    """Generators are valid expressions."""
+
+    expressions = [
+        '(i for i in line)',
+        'inspect.isgenerator(line)'
+    ]
+    results = list(pyin.eval(expressions, ['word']))
+
+    assert results == [True]

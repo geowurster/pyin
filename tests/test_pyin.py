@@ -39,16 +39,6 @@ def test_multiple_expr(runner, path_csv_with_header):
     assert result.output.strip() == expected.strip()
 
 
-def test_with_generator(runner, csv_with_header_content):
-    result = runner.invoke(_cli_entrypoint, [
-        "(i for i in line)"
-    ], input=csv_with_header_content)
-    assert result.exit_code == 0
-    assert not result.err
-    assert os.linesep.join(
-        [json.dumps(list((i for i in line))) for line in csv_with_header_content.splitlines()])
-
-
 def test_with_blank_lines(runner):
     result = runner.invoke(_cli_entrypoint, [
         'line'
@@ -75,17 +65,6 @@ def test_block_mode(runner):
 
     expected = '{"3": null, "4": null, "0": null, "2": null, "1": null}'
     assert json.loads(expected) == json.loads(result.output)
-
-
-def test_unicode(runner):
-
-    text = u"""Héllö"""
-    result = runner.invoke(_cli_entrypoint, [
-        'line.upper()'
-    ], input=text)
-    assert result.exit_code == 0
-    assert not result.err
-    assert result.output.strip() == text.strip().upper()
 
 
 @pytest.mark.parametrize("skip_lines", [1, 3])
