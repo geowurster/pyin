@@ -168,3 +168,11 @@ def test_OpRev_stream():
 
     actual = list(pyin.eval('%revstream', range(3)))
     assert [2, 1, 0] == actual
+
+
+def test_OpBatched():
+
+    """``%batched`` groups data properly."""
+
+    actual = list(pyin.eval(['%batched', '2'], range(5)))
+    assert [(0, 1), (2, 3), (4, )] == actual
