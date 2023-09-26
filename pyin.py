@@ -517,7 +517,7 @@ class OpBase(abc.ABC):
         return f"<{self.__class__.__name__}({self.directive}, ...)>"
 
     @abc.abstractmethod
-    def __call__(self, stream: Sequence) -> Sequence:
+    def __call__(self, stream):
 
         """Process a stream of data.
 
@@ -758,6 +758,36 @@ class OpReversed(OpBase, directives=('%rev', '%revstream')):
 
         else:  # pragma no cover
             raise RuntimeError(f"invalid directive: {self.directive}")
+
+
+class OpBatched(OpBase, directives=('%batched', )):
+
+    """Group stream into chunks with no more than N elements.
+
+    Equivalent to ``itertools.batched()``.
+    """
+
+    def __init__(self, directive: str, chunksize: int, /, **kwargs):
+
+        """
+        :param str directive:
+            See parent implementation.
+        :param int chunksize:
+            Maximum number of items to include in each "batch".
+        :param **kwargs kwargs:
+            See parent implementation.
+        """
+
+        super().__init__(directive, **kwargs)
+        self.chunksize = chunksize
+
+    def __call__(self, stream):
+
+        # 'itertools.batched()' was introduced in Python 3.12 and cannot
+        # be used
+        stream = (i for i in stream)
+        while chunk := tuple(it.islice(stream, self.chunksize)):
+            yield tuple(chunk)
 
 
 ###############################################################################
