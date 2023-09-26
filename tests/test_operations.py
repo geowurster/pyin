@@ -75,7 +75,7 @@ def test_OpBase_repr():
         def __call__(self, stream):
             raise NotImplementedError
 
-    o = Op('%dir', variable='v', scope={})
+    o = Op('%dir', variable='v', stream_variable='stream', scope={})
     assert repr(o) == '<Op(%dir)>'
 
 
@@ -86,7 +86,7 @@ def test_OpBase_init_directive_mismatch():
             raise NotImplementedError
 
     with pytest.raises(ValueError) as e:
-        Op('%mismatch', variable='v', scope={})
+        Op('%mismatch', variable='v', stream_variable='stream', scope={})
 
     assert "with directive '%mismatch' but supports: %dir" in str(e.value)
 
@@ -122,3 +122,13 @@ def test_OpJSON():
     # JSON string -> object
     actual = list(pyin.eval('%json', actual))
     assert python_objects == actual
+
+
+def test_OpStream():
+
+    """``%stream`` operates on the stream itself and not a single item."""
+
+    expressions = ['%stream', '[i * 10 for i in stream]']
+    actual = list(pyin.eval(expressions, range(3)))
+
+    assert [0, 10, 20] == actual

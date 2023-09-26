@@ -58,6 +58,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 _DEFAULT_VARIABLE = 'i'
+_DEFAULT_STREAM_VARIABLE = 'stream'
 _IMPORTER_REGEX = re.compile(r"([a-zA-Z_.][a-zA-Z0-9_.]*)")
 _DIRECTIVE_REGISTRY = {}
 
@@ -89,6 +90,7 @@ def _normalize_expressions(f: Callable) -> Callable:
 def compile(
         expressions: Union[str, Sequence[str]],
         variable: str = _DEFAULT_VARIABLE,
+        stream_variable: str = _DEFAULT_STREAM_VARIABLE,
         scope: Union[None, dict] = None
 ) -> Tuple[CodeType]:
 
@@ -100,6 +102,9 @@ def compile(
 
     :param expressions:
         Expressions to compile.
+    :param stream_variable:
+        Instruct operations to use this variable when evaluating Python
+        expressions against the entire stream.
     """
 
     compiled = []
@@ -155,7 +160,8 @@ def compile(
         args.extend(p.annotation(tokens.pop(0)) for p in pos_only[1:])
         kwargs = {
             'variable': variable,
-            'scope': scope
+            'scope': scope,
+            'stream_variable': stream_variable
         }
 
         compiled.append(cls(*args, **kwargs))
@@ -216,7 +222,12 @@ def importer(
 
 
 @_normalize_expressions
-def eval(expressions, stream, variable: str = _DEFAULT_VARIABLE):
+def eval(
+        expressions,
+        stream,
+        variable: str = _DEFAULT_VARIABLE,
+        stream_variable: str = _DEFAULT_STREAM_VARIABLE
+):
 
     """Map Python expressions across a stream of data.
 
@@ -341,6 +352,9 @@ def eval(expressions, stream, variable: str = _DEFAULT_VARIABLE):
     variable : str, optional
         Expressions reference this variable to access objects from `iterator`
         during processing.
+    stream_variable : str, optional
+        Some expressions are evaluated against the stream itself. Place the
+        stream in this variable.
     """
 
     scope = {
@@ -350,7 +364,12 @@ def eval(expressions, stream, variable: str = _DEFAULT_VARIABLE):
     }
 
     importer(expressions, scope=scope)
-    compiled_expressions = compile(expressions, variable=variable, scope=scope)
+    compiled_expressions = compile(
+        expressions,
+        variable=variable,
+        stream_variable=stream_variable,
+        scope=scope
+    )
 
     for op_instance in compiled_expressions:
         stream = op_instance(stream)
@@ -389,7 +408,14 @@ class OpBase(abc.ABC):
     their type.
     """
 
-    def __init__(self, directive: str, /, variable: str, scope: dict):
+    def __init__(
+            self,
+            directive: str,
+            /,
+            variable: str,
+            stream_variable: str,
+            scope: dict
+    ):
 
         """
         :param directive:
@@ -398,6 +424,10 @@ class OpBase(abc.ABC):
         :param variable:
             Operations executing expressions with Python's :obj:`eval` should
             place data in this variable in the scope.
+        :param stream_variable:
+            Operations executing expressions against the stream object itself
+            with Python's :obj:`eval` should place the stream in this variable
+            in the scope.
         :param scope:
             Operations executing expressions with Python's :obj:`eval` should
             execute in this scope.
@@ -405,6 +435,7 @@ class OpBase(abc.ABC):
 
         self.directive = directive
         self.variable = variable
+        self.stream_variable = stream_variable
         self.scope = scope
 
         if self.directive not in self.directives:
@@ -567,6 +598,45 @@ class OpJSON(OpBase, directives=('%json', )):
         return map(func, stream)
 
 
+class OpStream(OpEval, directives=('%stream', )):
+
+    """Evaluate an expression on the stream itself.
+
+    Scope provides access to the entire stream via ``stream_variable`` instead
+    of individual items from the stream.
+    """
+
+    def __init__(self, directive: str, expression: str, /, **kwargs):
+
+        """See parent implementation.
+
+        This operation can only operate on the stream, so it places
+        ``stream_variable`` in ``variable``, and sets the former to ``None``
+        since it is irrelevant.
+
+        :param str directive:
+            See parent implementation.
+        :param str expression:
+            Evaluate this expression.
+        :param **kwargs kwargs:
+            For parent ``__init__()`` method.
+        """
+
+        super().__init__(directive, expression, **kwargs)
+        self.variable = self.stream_variable
+        self.stream_variable = None
+
+    def __call__(self, stream):
+
+        # This method can receive any object, but convert it to an iterator
+        # to provide consistency before passing to the expression.
+        stream = (i for i in stream)
+
+        # Use the parent implementation and a bit of trickery to instead
+        # operate on the stream itself.
+        return next(super().__call__([stream]))
+
+
 ###############################################################################
 # Command Line Interface
 
@@ -669,6 +739,12 @@ def argparse_parser() -> argparse.ArgumentParser:
         help="Place each input item in this variable when evaluating"
              " expressions."
     )
+    aparser.add_argument(
+        '--stream-variable', default=_DEFAULT_STREAM_VARIABLE,
+        type=_type_variable,
+        help="Place the stream in this variable when evaluating expressions"
+             " against the stream itself."
+    )
 
     aparser.add_argument('expressions', nargs='*')
 
@@ -713,7 +789,8 @@ def main(
         outfile: TextIO,
         expressions: List[str],
         linesep: str,
-        variable: str
+        variable: str,
+        stream_variable: str
 ) -> int:
 
     """Command line interface.
@@ -734,6 +811,8 @@ def main(
         Write this after every line.
     :param variable:
         Place each input item in this variable when evaluating expressions.
+    :param stream_variable:
+        See ``--variable``.
 
     :returns:
         Exit code.
@@ -777,7 +856,9 @@ def main(
 
     # ==== Process Data ==== #
 
-    for line in eval(expressions, input_stream, variable=variable):
+    for line in eval(
+            expressions, input_stream,
+            variable=variable, stream_variable=stream_variable):
 
         if not isinstance(line, str):
             line = repr(line)
