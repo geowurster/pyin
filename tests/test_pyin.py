@@ -221,7 +221,7 @@ def test_no_arguments_prints_help(runner):
     result = runner.invoke(_cli_entrypoint, [])
 
     with StringIO() as f:
-        pyin.cli_parser().print_help(file=f)
+        pyin.argparse_parser().print_help(file=f)
         f.seek(0)
         expected = f.read()
 

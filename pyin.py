@@ -627,7 +627,7 @@ def _type_variable(value):
     return value
 
 
-def cli_parser() -> argparse.ArgumentParser:
+def argparse_parser() -> argparse.ArgumentParser:
 
     """Construct an :obj:`argparse.ArgumentParser`.
 
@@ -763,7 +763,7 @@ def main(
     # to 'stdin', and no '--gen' flag. Technically users can type data into
     # 'stdin' in this mode, but that doesn't seem very useful.
     if generate_expr is None and infile.isatty():
-        cli_parser().print_help()
+        argparse_parser().print_help()
         return 2
 
     # Piping data to stdin combined with '--gen' is not allowed.
@@ -843,7 +843,7 @@ def _cli_entrypoint(rawargs: Optional[list] = None):
         path. Used in testing.
     """
 
-    args = cli_parser().parse_args(args=rawargs)
+    args = argparse_parser().parse_args(args=rawargs)
 
     try:
         exit_code = main(**vars(args))
