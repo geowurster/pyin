@@ -156,7 +156,22 @@ def compile(
 
         # Arguments for instantiating argument class
         args = [directive]
-        args.extend(p.annotation(tokens.pop(0)) for p in pos_only[1:])
+        for param in pos_only[1:]:
+
+            # Ran out of CLI arguments but expected more
+            if not len(tokens):
+                raise ValueError(
+                    f"missing argument '{param.name}' for directive:"
+                    f" {directive}")
+
+            # Make sure we can cast
+            if param.annotation == inspect._empty:
+                raise RuntimeError(
+                    f"argument '{param.name}' for directive '{directive}' is"
+                    f" missing a type annotation")
+
+            args.append(param.annotation(tokens.pop(0)))
+
         kwargs = {
             'variable': variable,
             'scope': scope,
