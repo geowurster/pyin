@@ -4,6 +4,7 @@
 import abc
 import argparse
 import builtins
+import csv
 import functools
 import importlib
 import inspect
@@ -635,6 +636,46 @@ class OpStream(OpEval, directives=('%stream', )):
         # Use the parent implementation and a bit of trickery to instead
         # operate on the stream itself.
         return next(super().__call__([stream]))
+
+
+class OpCSVDict(OpBase, directives=('%csvd', )):
+
+    """Read/write data via ``csv.DictReader()`` and ``csv.DictWriter()``.
+
+    If the input data is text data is parsed with the default
+    ``csv.DictReader()`` settings. Otherwise, a header and rows with "quote
+    all" enabled are written.
+    """
+
+    def __call__(self, stream: Sequence):
+
+        first, stream = _peek(stream)
+
+        # Reading from a CSV
+        if isinstance(first, str):
+            yield from csv.DictReader(stream)
+
+        # Writing to a CSV
+        else:
+
+            # This file-like object doesn't actually write to a file. Since
+            # 'csv.DictWriter.write()' just returns values up the chain, just
+            # returning from 'FakeFile.write()' is enough to get a line of
+            # text to pass down the line.
+            class FakeFile:
+                def write(self, data):
+                    return data
+
+            writer = csv.DictWriter(
+                FakeFile(),
+                fieldnames=list(first.keys()),
+                quoting=csv.QUOTE_ALL,
+                lineterminator='',  # pyin itself handles newline characters
+            )
+
+            yield writer.writeheader()
+            for row in stream:
+                yield writer.writerow(row)
 
 
 ###############################################################################
