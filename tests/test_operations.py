@@ -43,7 +43,7 @@ def test_Filter(directive, expected):
     func = mapping[directive]
 
     expected = list(func(lambda x: x > 5, data))
-    actual = list(pyin.eval([directive, "line > 5"], data))
+    actual = list(pyin.eval([directive, "i > 5"], data))
 
     assert expected == actual
 

@@ -11,7 +11,7 @@ import pyin
 
 
 def test_single_expr():
-    result = list(pyin.eval(["%filter", "20 <= line <= 80"], range(100)))
+    result = list(pyin.eval(["%filter", "20 <= i <= 80"], range(100)))
     assert len(result) == len(list(range(20, 81)))
     for item in result:
         assert 20 <= item <= 80
@@ -19,7 +19,7 @@ def test_single_expr():
 
 def test_with_map():
     result = list(pyin.eval(
-        "list(map(int, line.split('-')))", ['2015-01-01']))
+        "list(map(int, i.split('-')))", ['2015-01-01']))
     assert result == [[2015, 1, 1]]
 
 
@@ -52,8 +52,8 @@ def test_with_generator():
     """Generators are valid expressions."""
 
     expressions = [
-        '(i for i in line)',
-        'inspect.isgenerator(line)'
+        '(i for i in i)',
+        'inspect.isgenerator(i)'
     ]
     results = list(pyin.eval(expressions, ['word']))
 
