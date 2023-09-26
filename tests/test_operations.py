@@ -47,18 +47,18 @@ def test_Filter(directive, expected):
     assert expected == actual
 
 
-def test_BaseOperation_directive_registry_conflict():
+def test_OpBase_directive_registry_conflict():
 
     """Two operations register the same directive."""
 
-    class Op1(pyin.BaseOperation, directives=('%dir', )):
+    class Op1(pyin.OpBase, directives=('%dir', )):
         pass
 
     with pytest.raises(RuntimeError) as e:
 
-        # The test lives in 'BaseOperation.__init_subclass__()', so the class
+        # The test lives in 'OpBase.__init_subclass__()', so the class
         # cannot even be defined.
-        class Op2(pyin.BaseOperation, directives=('%dir', )):
+        class Op2(pyin.OpBase, directives=('%dir', )):
             pass
 
     assert "directive '%dir' conflict" in str(e.value)
@@ -66,11 +66,11 @@ def test_BaseOperation_directive_registry_conflict():
     assert 'Op2' in str(e.value)
 
 
-def test_BaseOperation_repr():
+def test_OpBase_repr():
 
-    """Check :meth:`BaseOperation.__repr__()`"""
+    """Check :meth:`OpBase.__repr__()`"""
 
-    class Op(pyin.BaseOperation, directives=('%dir', )):
+    class Op(pyin.OpBase, directives=('%dir', )):
         def __call__(self, stream):
             raise NotImplementedError
 
@@ -78,9 +78,9 @@ def test_BaseOperation_repr():
     assert repr(o) == '<Op(%dir)>'
 
 
-def test_BaseOperation_init_directive_mismatch():
+def test_OpBase_init_directive_mismatch():
 
-    class Op(pyin.BaseOperation, directives=('%dir', )):
+    class Op(pyin.OpBase, directives=('%dir', )):
         def __call__(self, stream):
             raise NotImplementedError
 

@@ -13,14 +13,14 @@ def test_directive_registry_conflict():
 
     """Two operations register the same directive."""
 
-    class Op1(pyin.BaseOperation, directives=('%dir', )):
+    class Op1(pyin.OpBase, directives=('%dir', )):
         pass
 
     with pytest.raises(RuntimeError) as e:
 
-        # The test lives in 'BaseOperation.__init_subclass__()', so the class
+        # The test lives in 'OpBase.__init_subclass__()', so the class
         # cannot even be defined.
-        class Op2(pyin.BaseOperation, directives=('%dir', )):
+        class Op2(pyin.OpBase, directives=('%dir', )):
             pass
 
     assert "directive '%dir' conflict" in str(e.value)
