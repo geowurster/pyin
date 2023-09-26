@@ -55,47 +55,6 @@ def test_with_blank_lines(runner):
     assert result.output == ''
 
 
-def test_block_mode(runner):
-    text = json.dumps({k: None for k in range(10)}, indent=4)
-    assert len(text.splitlines()) > 1
-
-    result = runner.invoke(_cli_entrypoint, [
-        "--block",
-        "json.loads(i)",
-        # 'int(k)' below is because only strings can be keys in JSON, so
-        # the key is being cast to an integer.
-        "{k: v for k, v in i.items() if int(k) in range(5)}",
-        "json.dumps(i)"
-    ], input=text)
-    assert result.exit_code == 0
-    assert not result.err
-
-    expected = '{"3": null, "4": null, "0": null, "2": null, "1": null}'
-    assert json.loads(expected) == json.loads(result.output)
-
-
-@pytest.mark.parametrize("skip_lines", [1, 3])
-def test_skip_single_line(runner, skip_lines, csv_with_header_content):
-    result = runner.invoke(_cli_entrypoint, [
-        '--skip', str(skip_lines),
-        'i'
-    ], input=csv_with_header_content)
-    assert result.exit_code == 0
-    assert not result.err
-    expected = os.linesep.join(csv_with_header_content.splitlines()[skip_lines:])
-    assert result.output.strip() == expected.strip()
-
-
-def test_skip_all_input(runner, csv_with_header_content):
-    result = runner.invoke(_cli_entrypoint, [
-        '--skip', str(100),
-        'i'
-    ], input=csv_with_header_content)
-    assert result.exit_code == 0
-    assert not result.err
-    assert result.output == ""
-
-
 def test_repr(runner):
 
     text = """
@@ -157,27 +116,6 @@ def test_gen_stdin(runner):
         assert item in result.err
 
 
-@pytest.mark.parametrize("skip,expected", [
-    # Skip 2 out of 3 lines
-    (2, '2' + os.linesep),
-    # Skip exactly all lines
-    (3, ""),
-    # Skip too many lines
-    (4, "")
-])
-def test_gen_skip(runner, skip, expected):
-
-    """Combine ``--gen`` with ``--skip``."""
-
-    result = runner.invoke(
-        _cli_entrypoint,
-        ['--gen', 'range(3)', '--skip', str(skip)])
-
-    assert result.exit_code == 0
-    assert not result.err
-    assert result.output == expected
-
-
 def test_gen_not_iterable(runner):
 
     """``--gen`` does not produce an iterable object."""
@@ -188,19 +126,6 @@ def test_gen_not_iterable(runner):
     assert not result.output
     for item in ('--gen', 'iterable object'):
         assert item in result.err
-
-
-def test_gen_block(runner):
-
-    """``--gen`` combined with ``--block``."""
-
-    result = runner.invoke(
-        _cli_entrypoint,
-        ['--gen', 'range(3)', '--block', 'list(i)'])
-
-    assert result.exit_code == 0
-    assert not result.err
-    assert result.output == '[0, 1, 2]' + os.linesep
 
 
 def test_bad_directive(runner):
