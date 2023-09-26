@@ -146,3 +146,25 @@ def test_OpCSVDict(csv_with_header_content):
 
     text_rows = list(pyin.eval('%csvd', row_dicts))
     assert text_rows == csv_lines
+
+
+@pytest.mark.parametrize("value,expected", [
+    (['123', '456'], ['321', '654']),
+    ([[1, 2], [3, 4]], [[2, 1], [4, 3]]),
+    ([(1, 2), (3, 4)], [(2, 1), (4, 3)]),
+    ([{'k1': 'v1', 'k2': 'v2'}], [('k2', 'k1')])
+])
+def test_OpRev_items(value, expected):
+
+    """Reverse each item independently."""
+
+    actual = list(pyin.eval('%rev', value))
+    assert expected == actual
+
+
+def test_OpRev_stream():
+
+    """Reverse the entire stream."""
+
+    actual = list(pyin.eval('%revstream', range(3)))
+    assert [2, 1, 0] == actual
