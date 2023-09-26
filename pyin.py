@@ -16,6 +16,7 @@ import signal
 import operator as op
 import os
 import re
+import traceback
 from types import CodeType
 from typing import (
     Callable, Iterable, List, Optional, Sequence, TextIO, Tuple, Union)
@@ -1050,6 +1051,12 @@ def _cli_entrypoint(rawargs: Optional[list] = None):
     except KeyboardInterrupt:
         print()  # Don't get a trailing newline otherwise
         exit_code = 128 + signal.SIGINT
+
+    # A 'RuntimeError()' indicates a problem that should have been caught
+    # during testing. We want a full traceback in these cases.
+    except RuntimeError:  # pragma no cover
+        print(''.join(traceback.format_exc()).rstrip(), file=sys.stderr)
+        exit_code = 1
 
     # Generic error reporting
     except Exception as e:
