@@ -185,21 +185,10 @@ def importer(
 
     for match in all_matches:
 
-        split = match.split('.', 1)
-
-        # Like: json.loads()
-        if len(split) == 1:
-            module = split[0]
-            other = []
-
-        # Like: os.path.join()
-        elif len(split) == 2:
-            module, other = split
-            other = [other]
-
-        # I don't think it is possible to actually hit this.
-        else:
-            raise ImportError("Error importing from: {}".format(match))
+        # 'match' could be something like:
+        #   json.dumps
+        #   collections.OrderedDict.items
+        module = match.split('.', 1)[0]
 
         # Try and limit the number of import attempts, but only when confident.
         if not module or hasattr(builtins, module):
@@ -655,6 +644,38 @@ def cli_parser() -> argparse.ArgumentParser:
     return aparser
 
 
+def _adjust_sys_path(f: Callable) -> Callable:
+
+    """Decorator to ensure :attr:`sys.path` is adjusted properly.
+
+    Being able to reference Python files or modules in the current directory
+    is very powerful, but requires an adjustment :attr:`sys.path` that we to
+    only manifest in certain contexts.
+
+    Primarily, applying this to :func:`main` allows it to provide an interface
+    to the CLI from within Python that also includes the :attr:`sys.path`
+    adjustment.
+
+    :param f:
+        Function to wrap.
+    """
+
+    @functools.wraps(f)
+    def inner(*args, **kwargs):
+
+        cleanup = '' not in sys.path
+        try:
+            if '' not in sys.path:
+                sys.path.append('')
+            return f(*args, **kwargs)
+        finally:
+            if cleanup:
+                sys.path.pop(sys.path.index(''))
+
+    return inner
+
+
+@_adjust_sys_path
 def main(
         generate_expr: Optional[str],
         infile: TextIO,

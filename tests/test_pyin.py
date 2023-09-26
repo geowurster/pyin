@@ -1,12 +1,14 @@
 """Tests for ``$ pyin`` command line interface."""
 
 
+import inspect
 from io import StringIO
 import json
 import os
 import pty
 import signal
 import subprocess
+import sys
 import textwrap
 import time
 
@@ -263,3 +265,55 @@ def test_KeyboardInterrupt():
 
     assert proc.returncode == 130
     assert not proc.stderr.read()
+
+
+def test_main_sys_path(runner):
+
+    """:func:`pytest.main` adjusts :attr:`sys.path`."""
+
+    assert '' not in sys.path
+
+    result = runner.invoke(
+        _cli_entrypoint,
+        ['--gen', 'range(1)', 'sys.path', 'json.dumps(line)']
+    )
+
+    assert '' not in sys.path
+    assert result.exit_code == 0
+    assert not result.err
+
+    data = json.loads(result.output)
+    assert '' in data
+
+    # Ensure that 'pyin.eval()' was not in fact the thing modifying 'sys.path'
+    results = list(pyin.eval('sys.path', range(1)))
+    assert '' not in results[0]
+
+
+def test_import_from_file_in_current_directory(runner):
+
+    tmpname = 'relmod.py'
+
+    def func(item):
+        """Call 'item.upper()'"""
+        return item.upper()
+
+    try:
+
+        # Create
+        with open(tmpname, 'w') as f:
+            f.write(f"# Part of: test_import_from_file_in_current_directory")
+            f.write(os.linesep * 2)
+            f.write(textwrap.dedent(inspect.getsource(func)))
+
+        result = runner.invoke(
+            _cli_entrypoint,
+            ['--gen', "['word']", 'relmod.func(line)']
+        )
+
+        assert result.exit_code == 0, result.err
+        assert not result.err
+        assert result.output == 'WORD' + os.linesep
+
+    finally:
+        os.unlink(tmpname)
