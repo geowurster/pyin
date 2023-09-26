@@ -209,7 +209,7 @@ def importer(
                 raise ImportError(
                     f"attempting to import something that cannot be imported"
                     f" from a module that does exist: {match}"
-                )
+                )  # pragma no cover
 
     return scope
 
@@ -632,8 +632,8 @@ def cli_parser() -> argparse.ArgumentParser:
         help="Place all input text into the `line` variable."
     )
     aparser.add_argument(
-        '--no-newline', action='store_true',
-        help="Don't ensure each line ends with a newline character."
+        '--linesep', default=os.linesep, metavar='STR',
+        help=f"Write this after every line. Defaults to: {repr(os.linesep)}."
     )
     aparser.add_argument(
         '--skip', dest='skip_lines', type=int, default=0,
@@ -684,7 +684,7 @@ def main(
         infile: TextIO,
         outfile: TextIO,
         expressions: List[str],
-        no_newline: bool,
+        linesep: str,
         block: bool,
         skip_lines: int
 ) -> int:
@@ -703,8 +703,8 @@ def main(
     :param expressions:
         Evaluate these ``pyin`` expressions on each line of text from
         ``infile``.
-    :param no_newline:
-        Do not append a line separator to the end of each line.
+    :param linesep:
+        Write this after every line.
     :param block:
         Treat all input lines as a single line of text. Equivalent to reading
         all input data into a single :obj:`str` and running that through
@@ -785,8 +785,7 @@ def main(
             line = repr(line)
 
         outfile.write(line)
-        if not line.endswith(os.linesep):
-            outfile.write(os.linesep)
+        outfile.write(linesep)
 
     return 0
 

@@ -317,3 +317,21 @@ def test_import_from_file_in_current_directory(runner):
 
     finally:
         os.unlink(tmpname)
+
+
+@pytest.mark.parametrize("linesep,expected", [
+    (os.linesep, os.linesep.join('012') + os.linesep),
+    ('', '012'),
+    ('ab', '0ab1ab2ab')
+])
+def test_linesep(runner, linesep, expected):
+
+    """``--linesep`` controls the character(s) written after every line."""
+
+    result = runner.invoke(
+        _cli_entrypoint,
+        ['--gen', 'range(3)', '--linesep', linesep])
+
+    assert result.exit_code == 0
+    assert not result.err
+    assert expected == result.output
