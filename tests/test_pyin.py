@@ -110,7 +110,7 @@ def test_gen_stdin(runner):
 
     result = runner.invoke(_cli_entrypoint, ['--gen', 'range(3)'], input="trash")
 
-    assert result.exit_code == 1
+    assert result.exit_code == 2
     assert not result.output
     for item in ('cannot combine', '--gen', 'stdin'):
         assert item in result.err
