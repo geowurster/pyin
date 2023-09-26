@@ -2,6 +2,7 @@
 
 
 import itertools as it
+import json
 
 import pytest
 
@@ -105,3 +106,19 @@ def test_Eval_syntax_error():
 
     assert 'contains a syntax error' in str(e.value)
     assert expr in str(e.value)
+
+
+def test_OpJSON():
+
+    """``%json`` encodes and decodes."""
+
+    python_objects = [list(range(3)) for _ in range(3)]
+    json_strings = [json.dumps(i) for i in python_objects]
+
+    # Object -> JSON string
+    actual = list(pyin.eval('%json', python_objects))
+    assert json_strings == actual
+
+    # JSON string -> object
+    actual = list(pyin.eval('%json', actual))
+    assert python_objects == actual

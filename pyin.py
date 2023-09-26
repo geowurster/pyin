@@ -8,6 +8,7 @@ import functools
 import importlib
 import inspect
 import itertools as it
+import json
 import sys
 import signal
 import operator as op
@@ -361,6 +362,24 @@ def eval(expressions, stream, variable: str = _DEFAULT_VARIABLE):
 # Operations
 
 
+def _peek(iterable):
+
+    """Peek at the first item of an iterable.
+
+    :param iterable iterable:
+        Get the first item from this iterable.
+
+    :return:
+        A ``tuple`` with two elements. The first is the next value in
+        ``iterable``, and the second is the reconstructed iterable, but
+        likely as a different type.
+    """
+
+    iterable = (i for i in iterable)
+    first = next(iterable)
+    return first, it.chain([first], iterable)
+
+
 class OpBase(abc.ABC):
 
     """Base class for defining an operation.
@@ -524,6 +543,28 @@ class OpFlatten(OpBase, directives=('%explode', '%flatten', '%chain')):
 
     def __call__(self, stream):
         return it.chain.from_iterable(stream)
+
+
+class OpJSON(OpBase, directives=('%json', )):
+
+    """Serialize/deserialize JSON data.
+
+    If the input is a string it is assumed to be JSON and deserialized.
+    Otherwise, it is serialized.
+    """
+
+    def __call__(self, stream: Iterable) -> Iterable:
+
+        first, stream = _peek(stream)
+
+        # 'json.loads/dumps()' both use these objects internally, but create
+        # an instance with every call. Presumably this is faster.
+        if isinstance(first, str):
+            func = json.JSONDecoder().decode
+        else:
+            func = json.JSONEncoder().encode
+
+        return map(func, stream)
 
 
 ###############################################################################
