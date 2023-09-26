@@ -92,9 +92,9 @@ def reload_pyin():
     """Reload :obj:`pyin`.
 
     Required to clear :obj:`pyin._DIRECTIVE_REGISTRY`. This global dictionary
-    is populated whenever :obj:`pyin.BaseOperation` is subclassed via
-    :meth:`pyin.BaseOperation.__init_subclass__`. Some tests subclass this
-    class to test functionality, which can populate the dictionary with invalid
+    is populated whenever :obj:`pyin.OpBase` is subclassed via
+    :meth:`pyin.OpBase.__init_subclass__`. Some tests subclass this class to
+    test functionality, which can populate the dictionary with invalid
     directives and other references.
 
     While more heavy-handed than I would like, just reloading :mod:`pyin` is

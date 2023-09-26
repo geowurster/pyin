@@ -132,7 +132,7 @@ def compile(
         # of the code simpler.
         if directive[0] != '%':
             tokens.insert(0, directive)
-            directive = Eval.directives[0]
+            directive = OpEval.directives[0]
 
         if directive not in _DIRECTIVE_REGISTRY:
             raise ValueError(f'invalid directive: {directive}')
@@ -361,7 +361,7 @@ def eval(expressions, stream, variable: str = _DEFAULT_VARIABLE):
 # Operations
 
 
-class BaseOperation(abc.ABC):
+class OpBase(abc.ABC):
 
     """Base class for defining an operation.
 
@@ -423,7 +423,7 @@ class BaseOperation(abc.ABC):
 
     def __repr__(self) -> str:
 
-        """Approximate representation of :obj:`BaseOperation` instance."""
+        """Approximate representation of :obj:`OpBase` instance."""
 
         return f"<{self.__class__.__name__}({self.directive})>"
 
@@ -442,7 +442,7 @@ class BaseOperation(abc.ABC):
         raise NotImplementedError  # pragma no cover
 
 
-class Eval(BaseOperation, directives=('%eval', )):
+class OpEval(OpBase, directives=('%eval', )):
 
     """Evaluate a Python expression with :obj:`eval`.
 
@@ -486,7 +486,7 @@ class Eval(BaseOperation, directives=('%eval', )):
             yield builtins_eval(expr, scope, {variable: item})
 
 
-class Filter(Eval, directives=('%filter', '%filterfalse')):
+class OpFilter(OpEval, directives=('%filter', '%filterfalse')):
 
     """Filter data based on a Python expression.
 
@@ -509,8 +509,8 @@ class Filter(Eval, directives=('%filter', '%filterfalse')):
         return it.compress(stream, selection)
 
 
-class Accumulate(
-        BaseOperation, directives=('%acc', '%accumulate', '%collect')):
+class OpAccumulate(
+        OpBase, directives=('%acc', '%accumulate', '%collect')):
 
     """Accumulate the entire stream into a single object."""
 
@@ -518,7 +518,7 @@ class Accumulate(
         yield list(stream)
 
 
-class Flatten(BaseOperation, directives=('%explode', '%flatten', '%chain')):
+class OpFlatten(OpBase, directives=('%explode', '%flatten', '%chain')):
 
     """Flatten the stream by one level – like :obj:`itertools.chain`."""
 
