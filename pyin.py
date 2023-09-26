@@ -658,10 +658,6 @@ def argparse_parser() -> argparse.ArgumentParser:
         help="Write to this file. Use '-' for stdout (the default)."
     )
     aparser.add_argument(
-        '--block', action='store_true',
-        help="Place all input text into the `line` variable."
-    )
-    aparser.add_argument(
         '--linesep', default=os.linesep, metavar='STR',
         help=f"Write this after every line. Defaults to: {repr(os.linesep)}."
     )
@@ -670,13 +666,7 @@ def argparse_parser() -> argparse.ArgumentParser:
         help="Place each input item in this variable when evaluating"
              " expressions."
     )
-    aparser.add_argument(
-        '--skip', dest='skip_lines', type=int, default=0,
-        help="Skip N lines in the input text stream before processing. When "
-             "operating in block processing mode the lines are skipped before"
-             " the text is converted to a block. When operating on multiple"
-             " input only lines in the first file are skipped."
-    )
+
     aparser.add_argument('expressions', nargs='*')
 
     return aparser
@@ -720,9 +710,7 @@ def main(
         outfile: TextIO,
         expressions: List[str],
         linesep: str,
-        block: bool,
-        variable: str,
-        skip_lines: int
+        variable: str
 ) -> int:
 
     """Command line interface.
@@ -741,14 +729,8 @@ def main(
         ``infile``.
     :param linesep:
         Write this after every line.
-    :param block:
-        Treat all input lines as a single line of text. Equivalent to reading
-        all input data into a single :obj:`str` and running that through
-        ``expressions``.
     :param variable:
         Place each input item in this variable when evaluating expressions.
-    :param skip_lines:
-        Skip the first N lines of the input stream.
 
     :returns:
         Exit code.
@@ -768,9 +750,7 @@ def main(
         raise argparse.ArgumentError(
             None, "cannot combine '--gen' with piping data to stdin")
 
-    # Generating data for input. Must also handle '--block' because the
-    # behavior differs for something like a sequence of floats vs. just
-    # a 'f.read()' for the input file.
+    # Generating data for input.
     elif generate_expr is not None:
         input_stream = eval(
             [generate_expr],
@@ -785,32 +765,9 @@ def main(
                 " object:", generate_expr, file=sys.stderr)
             return 1
 
-        # --skip
-        input_stream = (i for i in input_stream)
-        for _ in range(skip_lines):
-            try:
-                next(input_stream)
-            except StopIteration:
-                break
-
-        if block:
-            input_stream = [input_stream]
-
-    # Reading from the input file. Need to handle '--block' and '--skip' due
-    # to inherent differences for what these mean for '--gen'.
+    # Reading from the input file.
     else:
-
-        # --skip
-        for _ in range(skip_lines):
-            try:
-                next(infile)
-            except StopIteration:
-                break
-
-        if block:
-            input_stream = [infile.read()]
-        else:
-            input_stream = infile
+        input_stream = infile
 
         # Strip newline characters. They are added later.
         input_stream = (i.rstrip(os.linesep) for i in input_stream)
