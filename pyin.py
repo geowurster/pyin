@@ -613,6 +613,20 @@ The '$ pyin' expressions in the command above do:
 """.strip()
 
 
+def _type_variable(value):
+
+    """:mod:`argparse` type caster for ``--variable`` flag.
+
+    Ensures the given variable is valid.
+    """
+
+    if not value.isidentifier():
+        raise argparse.ArgumentTypeError(
+            f'string is not valid as a variable: {value}')
+
+    return value
+
+
 def cli_parser() -> argparse.ArgumentParser:
 
     """Construct an :obj:`argparse.ArgumentParser`.
@@ -653,6 +667,11 @@ def cli_parser() -> argparse.ArgumentParser:
     aparser.add_argument(
         '--linesep', default=os.linesep, metavar='STR',
         help=f"Write this after every line. Defaults to: {repr(os.linesep)}."
+    )
+    aparser.add_argument(
+        '--variable', default=_DEFAULT_VARIABLE, type=_type_variable,
+        help="Place each input item in this variable when evaluating"
+             " expressions."
     )
     aparser.add_argument(
         '--skip', dest='skip_lines', type=int, default=0,
@@ -705,6 +724,7 @@ def main(
         expressions: List[str],
         linesep: str,
         block: bool,
+        variable: str,
         skip_lines: int
 ) -> int:
 
@@ -728,6 +748,8 @@ def main(
         Treat all input lines as a single line of text. Equivalent to reading
         all input data into a single :obj:`str` and running that through
         ``expressions``.
+    :param variable:
+        Place each input item in this variable when evaluating expressions.
     :param skip_lines:
         Skip the first N lines of the input stream.
 
@@ -798,7 +820,7 @@ def main(
 
     # ==== Process Data ==== #
 
-    for line in eval(expressions, input_stream):
+    for line in eval(expressions, input_stream, variable=variable):
 
         if not isinstance(line, str):
             line = repr(line)

@@ -335,3 +335,31 @@ def test_linesep(runner, linesep, expected):
     assert result.exit_code == 0
     assert not result.err
     assert expected == result.output
+
+
+def test_variable(runner):
+
+    """``--variable`` alters the scope."""
+
+    result = runner.invoke(
+        _cli_entrypoint,
+        ['--gen', 'range(3)', 'v + 1', '--variable', 'v']
+    )
+
+    assert result.exit_code == 0, result.err
+    assert not result.err
+    assert result.output == os.linesep.join('123') + os.linesep
+
+
+def test_variable_invalid(runner):
+
+    """Ensure string passed to ``--variable`` can be used as a variable."""
+
+    result = runner.invoke(
+        _cli_entrypoint,
+        ['--variable', '1']
+    )
+
+    assert result.exit_code == 2
+    assert not result.output
+    assert 'string is not valid as a variable: 1' in result.err
