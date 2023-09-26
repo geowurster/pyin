@@ -4,6 +4,7 @@
 import abc
 import argparse
 import builtins
+from collections import deque
 import csv
 import functools
 import importlib
@@ -676,6 +677,42 @@ class OpCSVDict(OpBase, directives=('%csvd', )):
             yield writer.writeheader()
             for row in stream:
                 yield writer.writerow(row)
+
+
+class OpReversed(OpBase, directives=('%rev', '%revstream')):
+
+    """Reverse item/stream."""
+
+    def __call__(self, stream: Sequence):
+
+        # Python's 'reversed()' is kind of weird, and seems to only work well
+        # when the object is immediately iterated over. So, to be more helpful,
+        # we have some very extra special handling here.
+
+        # Reverse each item
+        if self.directive in ('%rev', '%reversed'):
+
+            first, stream = _peek(stream)
+
+            # Can reverse these objects by slicing while preserving the
+            # original type.
+            if isinstance(first, (str, list, tuple)):
+                yield from (i[::-1] for i in stream)
+
+            else:
+                yield from (tuple(reversed(i)) for i in stream)
+
+        # Reverse entire stream
+        elif self.directive in ('%revstream', '%reversedstream'):
+
+            # Popping items off of the queue avoids having two copies of the
+            # input data in-memory.
+            stream = deque(stream)
+            while stream:
+                yield stream.pop()
+
+        else:  # pragma no cover
+            raise RuntimeError(f"invalid directive: {self.directive}")
 
 
 ###############################################################################
