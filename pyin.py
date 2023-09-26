@@ -200,8 +200,8 @@ def importer(
 
         # Failed to import. To be helpful, check and see if the module exists.
         # if it does, the caller is referencing something that cannot be
-        # imported, like a class method.
-        except ImportError:
+        # imported, like a class method. Unclear how to trigger this in a test.
+        except ImportError:  # pragma no cover
             res = importlib.util.find_spec(module)
             if res is not None:
                 raise ImportError(
