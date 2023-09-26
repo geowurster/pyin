@@ -264,25 +264,31 @@ def test_linesep(runner, linesep, expected):
 
 def test_variable(runner):
 
-    """``--variable`` alters the scope."""
+    """Flags for altering variable names in the ``eval()`` scope."""
 
     result = runner.invoke(
         _cli_entrypoint,
-        ['--gen', 'range(3)', 'v + 1', '--variable', 'v']
+        [
+            '--gen', 'range(3)',
+            '--variable', 'v', '--stream-variable', 's2',
+            'v + 1',
+            '%stream', '[i ** 2 for i in s2]'
+        ]
     )
 
     assert result.exit_code == 0, result.err
     assert not result.err
-    assert result.output == os.linesep.join('123') + os.linesep
+    assert result.output == os.linesep.join('149') + os.linesep
 
 
-def test_variable_invalid(runner):
+@pytest.mark.parametrize("flag", ("--variable", "--stream-variable"))
+def test_variable_invalid(runner, flag):
 
     """Ensure string passed to ``--variable`` can be used as a variable."""
 
     result = runner.invoke(
         _cli_entrypoint,
-        ['--variable', '1']
+        [flag, '1']
     )
 
     assert result.exit_code == 2
