@@ -344,9 +344,8 @@ def eval(expressions, stream, variable: str = _DEFAULT_VARIABLE):
         'op': op,
         'reduce': functools.reduce
     }
-    if all(isinstance(e, str) for e in expressions):
-        importer(expressions, scope=scope)
 
+    importer(expressions, scope=scope)
     compiled_expressions = compile(expressions, variable=variable, scope=scope)
 
     for callable in compiled_expressions:
