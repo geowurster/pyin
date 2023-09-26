@@ -58,6 +58,7 @@ and emerged out of the path of least resistance.
 
 
 from contextlib import ExitStack, redirect_stderr, redirect_stdout
+import importlib
 from io import StringIO
 import os.path
 from types import MethodType
@@ -65,6 +66,8 @@ from typing import Callable, Union
 from unittest import mock
 
 import pytest
+
+import pyin
 
 
 @pytest.fixture(scope='function')
@@ -81,6 +84,25 @@ def path_csv_with_header():
 def csv_with_header_content(path_csv_with_header):
     with open(path_csv_with_header) as f:
         return f.read()
+
+
+@pytest.fixture(autouse=True)
+def reload_pyin():
+
+    """Reload :obj:`pyin`.
+
+    Required to clear :obj:`pyin._DIRECTIVE_REGISTRY`. This global dictionary
+    is populated whenever :obj:`pyin.BaseOperation` is subclassed via
+    :meth:`pyin.BaseOperation.__init_subclass__`. Some tests subclass this
+    class to test functionality, which can populate the dictionary with invalid
+    directives and other references.
+
+    While more heavy-handed than I would like, just reloading :mod:`pyin` is
+    the easiest way to clear and repopulate the cache.
+    """
+
+    importlib.reload(pyin)
+
 
 
 class PyinCliRunner:

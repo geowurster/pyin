@@ -1,6 +1,10 @@
 """Tests for ``pyin`` operations for algorithmic correctness."""
 
 
+import itertools as it
+
+import pytest
+
 import pyin
 
 
@@ -24,3 +28,80 @@ def test_flatten():
     actual = list(pyin.eval("%flatten", stream))
 
     assert expected == actual
+
+
+@pytest.mark.parametrize("directive,expected", [
+    ('%filter', None),
+    ('%filterfalse', None)
+])
+def test_Filter(directive, expected):
+
+    data = list(range(10))
+
+    mapping = {'%filter': filter, '%filterfalse': it.filterfalse}
+    func = mapping[directive]
+
+    expected = list(func(lambda x: x > 5, data))
+    actual = list(pyin.eval([directive, "line > 5"], data))
+
+    assert expected == actual
+
+
+def test_BaseOperation_directive_registry_conflict():
+
+    """Two operations register the same directive."""
+
+    class Op1(pyin.BaseOperation, directives=('%dir', )):
+        pass
+
+    with pytest.raises(RuntimeError) as e:
+
+        # The test lives in 'BaseOperation.__init_subclass__()', so the class
+        # cannot even be defined.
+        class Op2(pyin.BaseOperation, directives=('%dir', )):
+            pass
+
+    assert "directive '%dir' conflict" in str(e.value)
+    assert 'Op1' in str(e.value)
+    assert 'Op2' in str(e.value)
+
+
+def test_BaseOperation_repr():
+
+    """Check :meth:`BaseOperation.__repr__()`"""
+
+    class Op(pyin.BaseOperation, directives=('%dir', )):
+        def __call__(self, stream):
+            raise NotImplementedError
+
+    o = Op('%dir', variable='v', scope={})
+    assert repr(o) == '<Op(%dir)>'
+
+
+def test_BaseOperation_init_directive_mismatch():
+
+    class Op(pyin.BaseOperation, directives=('%dir', )):
+        def __call__(self, stream):
+            raise NotImplementedError
+
+    with pytest.raises(ValueError) as e:
+        Op('%mismatch', variable='v', scope={})
+
+    assert "with directive '%mismatch' but supports: %dir"
+
+
+def test_Eval_syntax_error():
+
+    """Produce a helpful error when encountering :obj:`SyntaxError`.
+
+    :obj:`pyin.Eval` compiles Python expressions to code objects, which can
+    hit a :obj:`SyntaxError`. Be sure that this is translated to a helpful
+    error for the caller.
+    """
+
+    expr = '$ syntax error $'
+    with pytest.raises(SyntaxError) as e:
+        list(pyin.eval(expr, range(1)))
+
+    assert 'contains a syntax error' in str(e.value)
+    assert expr in str(e.value)
