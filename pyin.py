@@ -348,8 +348,8 @@ def eval(expressions, stream, variable: str = _DEFAULT_VARIABLE):
     importer(expressions, scope=scope)
     compiled_expressions = compile(expressions, variable=variable, scope=scope)
 
-    for callable in compiled_expressions:
-        stream = callable(stream)
+    for op_instance in compiled_expressions:
+        stream = op_instance(stream)
 
     yield from stream
 
