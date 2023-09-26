@@ -1,8 +1,10 @@
 """Tests for ``pyin`` operations for algorithmic correctness."""
 
 
+import csv
 import itertools as it
 import json
+import os
 
 import pytest
 
@@ -132,3 +134,15 @@ def test_OpStream():
     actual = list(pyin.eval(expressions, range(3)))
 
     assert [0, 10, 20] == actual
+
+
+def test_OpCSVDict(csv_with_header_content):
+
+    csv_lines = [
+        i.rstrip(os.linesep) for i in csv_with_header_content.splitlines()]
+
+    row_dicts = list(pyin.eval('%csvd', csv_lines))
+    assert row_dicts == list(csv.DictReader(csv_lines))
+
+    text_rows = list(pyin.eval('%csvd', row_dicts))
+    assert text_rows == csv_lines
