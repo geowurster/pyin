@@ -879,36 +879,57 @@ def argparse_parser() -> argparse.ArgumentParser:
     # Input data
     input_group = aparser.add_mutually_exclusive_group()
     input_group.add_argument(
-        '--gen', metavar='EXPR', dest='generate_expr', type=_type_gen,
-        help="Execute expression and feed results into other expressions."
+        '--gen',
+        metavar='expression',
+        dest='generate_expr',
+        type=_type_gen,
+        help="Execute this Python expression and feed results into other"
+             " expressions."
     )
     input_group.add_argument(
-        '-i', '--infile', type=argparse.FileType('r'), default='-',
+        '-i', '--infile',
+        metavar='path',
+        type=argparse.FileType('r'),
+        default='-',
         help="Read input from this file. Use '-' for stdin (the default)."
     )
 
     aparser.add_argument(
-        '-o', '--outfile', metavar='PATH',
-        type=argparse.FileType('w'), default='-',
+        '-o', '--outfile',
+        metavar='path',
+        type=argparse.FileType('w'),
+        default='-',
         help="Write to this file. Use '-' for stdout (the default)."
     )
     aparser.add_argument(
-        '--linesep', default=os.linesep, metavar='STR',
+        '--linesep',
+        metavar='string',
+        default=os.linesep,
         help=f"Write this after every line. Defaults to: {repr(os.linesep)}."
     )
     aparser.add_argument(
-        '--variable', default=_DEFAULT_VARIABLE, type=_type_variable,
+        '--variable',
+        metavar='string',
+        type=_type_variable,
+        default=_DEFAULT_VARIABLE,
         help="Place each input item in this variable when evaluating"
              " expressions."
     )
     aparser.add_argument(
-        '--stream-variable', default=_DEFAULT_STREAM_VARIABLE,
+        '--stream-variable',
+        metavar='string',
         type=_type_variable,
+        default=_DEFAULT_STREAM_VARIABLE,
         help="Place the stream in this variable when evaluating expressions"
              " against the stream itself."
     )
 
-    aparser.add_argument('expressions', nargs='*')
+    aparser.add_argument(
+        'expressions',
+        metavar='expressions',
+        nargs='*',
+        help='Python expression.'
+    )
 
     return aparser
 
