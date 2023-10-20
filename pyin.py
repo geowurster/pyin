@@ -2,6 +2,7 @@
 
 
 import abc
+from collections.abc import Sequence
 import argparse
 import builtins
 from collections import deque
@@ -17,9 +18,6 @@ import operator as op
 import os
 import re
 import traceback
-from types import CodeType
-from typing import (
-    Callable, Iterable, List, Optional, Sequence, TextIO, Tuple, Union)
 
 
 __version__ = '0.5.4'
@@ -63,7 +61,7 @@ _IMPORTER_REGEX = re.compile(r"([a-zA-Z_.][a-zA-Z0-9_.]*)")
 _DIRECTIVE_REGISTRY = {}
 
 
-def _normalize_expressions(f: Callable) -> Callable:
+def _normalize_expressions(f):
 
     """Ensure functions can receive single or multiple expressions.
 
@@ -88,11 +86,10 @@ def _normalize_expressions(f: Callable) -> Callable:
 
 @_normalize_expressions
 def compile(
-        expressions: Union[str, Sequence[str]],
-        variable: str = _DEFAULT_VARIABLE,
-        stream_variable: str = _DEFAULT_STREAM_VARIABLE,
-        scope: Union[None, dict] = None
-) -> Tuple[CodeType]:
+        expressions,
+        variable=_DEFAULT_VARIABLE,
+        stream_variable=_DEFAULT_STREAM_VARIABLE,
+        scope=None):
 
     """Compile expressions to Python :module:`code` objects.
 
@@ -179,10 +176,7 @@ def compile(
 
 
 @_normalize_expressions
-def importer(
-        expressions: Union[str, Sequence[str]],
-        scope: dict
-) -> dict:
+def importer(expressions, scope):
 
     """Parse expressions and import modules into a single scope.
 
@@ -234,8 +228,8 @@ def importer(
 def eval(
         expressions,
         stream,
-        variable: str = _DEFAULT_VARIABLE,
-        stream_variable: str = _DEFAULT_STREAM_VARIABLE
+        variable=_DEFAULT_VARIABLE,
+        stream_variable=_DEFAULT_STREAM_VARIABLE
 ):
 
     """Map Python expressions across a stream of data.
@@ -423,9 +417,9 @@ class OpBase(abc.ABC):
             self,
             directive: str,
             /,
-            variable: str,
-            stream_variable: str,
-            scope: dict
+            variable,
+            stream_variable,
+            scope
     ):
 
         """
@@ -454,7 +448,7 @@ class OpBase(abc.ABC):
                 f" {' '.join(self.directives)}"
             )
 
-    def __init_subclass__(cls, /, directives: Sequence, **kwargs):
+    def __init_subclass__(cls, /, directives, **kwargs):
 
         """Register subclass and its directives.
 
@@ -508,7 +502,7 @@ class OpBase(abc.ABC):
             cls.directives = directives
             _DIRECTIVE_REGISTRY[d] = cls
 
-    def __repr__(self) -> str:
+    def __repr__(self):
 
         """Approximate representation of operation instance."""
 
@@ -569,7 +563,7 @@ class OpEval(OpBase, directives=('%eval', )):
                 f" {e.text}"
             )
 
-    def __call__(self, stream: Iterable):
+    def __call__(self, stream):
 
         # Attribute lookup is not free
         expr = self.compiled_expression
@@ -593,7 +587,7 @@ class OpFilter(OpEval, directives=('%filter', '%filterfalse')):
         %filterfalse "i <= 2"
     """
 
-    def __call__(self, stream: Sequence) -> Sequence:
+    def __call__(self, stream):
 
         stream, selection = it.tee(stream, 2)
         selection = super().__call__(selection)
@@ -629,7 +623,7 @@ class OpJSON(OpBase, directives=('%json', )):
     Otherwise, it is serialized.
     """
 
-    def __call__(self, stream: Iterable) -> Iterable:
+    def __call__(self, stream):
 
         first, stream = _peek(stream)
 
@@ -691,7 +685,7 @@ class OpCSVDict(OpBase, directives=('%csvd', )):
     all" enabled are written.
     """
 
-    def __call__(self, stream: Sequence):
+    def __call__(self, stream):
 
         first, stream = _peek(stream)
 
@@ -726,7 +720,7 @@ class OpReversed(OpBase, directives=('%rev', '%revstream')):
 
     """Reverse item/stream."""
 
-    def __call__(self, stream: Sequence):
+    def __call__(self, stream):
 
         # Python's 'reversed()' is kind of weird, and seems to only work well
         # when the object is immediately iterated over. So, to be more helpful,
@@ -859,7 +853,7 @@ def _type_gen(value):
     return value
 
 
-def argparse_parser() -> argparse.ArgumentParser:
+def argparse_parser():
 
     """Construct an :obj:`argparse.ArgumentParser`.
 
@@ -934,7 +928,7 @@ def argparse_parser() -> argparse.ArgumentParser:
     return aparser
 
 
-def _adjust_sys_path(f: Callable) -> Callable:
+def _adjust_sys_path(f):
 
     """Decorator to ensure :attr:`sys.path` is adjusted properly.
 
@@ -967,14 +961,13 @@ def _adjust_sys_path(f: Callable) -> Callable:
 
 @_adjust_sys_path
 def main(
-        generate_expr: Optional[str],
-        infile: TextIO,
-        outfile: TextIO,
-        expressions: List[str],
-        linesep: str,
-        variable: str,
-        stream_variable: str
-) -> int:
+        generate_expr,
+        infile,
+        outfile,
+        expressions,
+        linesep,
+        variable,
+        stream_variable):
 
     """Command line interface.
 
@@ -1019,7 +1012,7 @@ def main(
         )
 
         input_stream = next(input_stream)
-        if not isinstance(input_stream, Iterable):
+        if not isinstance(input_stream, Sequence):
             print(
                 "ERROR: '--gen' expression did not produce an iterable"
                 " object:", generate_expr, file=sys.stderr)
@@ -1047,7 +1040,7 @@ def main(
     return 0
 
 
-def _cli_entrypoint(rawargs: Optional[list] = None):
+def _cli_entrypoint(rawargs=None):
     """Shim for CLI entrypoint.
 
     :func:`main` and :func:`parser` provide an entrypoint to the CLI that can
