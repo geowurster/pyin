@@ -1,47 +1,49 @@
-====
+####
 pyin
-====
+####
 
-It's like sed, but Python! A personal project.
+Like sed, but Python! A personal project.
 
+.. contents::
+    :depth: 2
 
-Why?
-====
+Documentation
+=============
 
-There are plenty of Unix tools, like ``sed`` and ``awk`` for processing text
-data from stdin or a file on disk, but the syntax can be unfriendly and
-sometimes its just easier to write a really simple script with a for loop
-and some if statements.  This project seeks to drop you in the middle of that
-``for`` loop and let you write your own Python expressions to quickly get the
-job done without actually writing a script, handle I/O, etc.
+See `docs.rst <docs.rst>`_.
 
+Documentation is built with `docutils <http://www.docutils.org>`_, which is
+much lighter than Sphinx, but also has far fewer directives. It does support
+rendering a single reStructuredText file as a single HTMl file though. The
+project provides a helpful `cheatsheet <https://docutils.sourceforge.io/docs/user/rst/cheatsheet.txt>`_.
 
 Installing
 ==========
 
-.. code-block:: console
+.. code:: console
 
     $ python3 -m pip install git+https://github.com/geowurster/pyin
-
-
-What about `py -x <https://github.com/Russell91/pythonpy>`_?
-============================================================
-
-Most of this project was written with very little knowledge of ``py`` and no
-knowledge of ``py -x``, which serves almost exactly the same purpose.  The
-primary difference between the two projects is that ``pyin`` requires I/O and
-has some smarter filtering for expressions that evaluate as ``True`` or
-``False``.
-
 
 Developing
 ==========
 
-.. code-block:: console
+.. code:: console
 
+    # Set up workspace
     $ git clone https://github.com/geowurster/pyin
     $ cd pyin
     $ python3 -m venv venv
     $ source venv/bin/activate
-    $ (venv) pip install --upgrade -e ".[test]" pip setuptools
+
+    # Upgrade packaging tools
+    $ (venv) pip install pip setuptools --upgrade
+
+    # Dev and test dependencies
+    $ (venv) pip install -r requirements-dev.txt -e ".[test]"
+
+    # Run tests
     $ (venv) pytest --cov pyin --cov-report term-missing
+
+    # Lint
+    $ (venv) pycodestyle
+    $ (venv) pydocstyle
