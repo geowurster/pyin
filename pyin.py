@@ -2,7 +2,7 @@
 
 
 import abc
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 import argparse
 import builtins
 from collections import deque
@@ -65,10 +65,16 @@ def _normalize_expressions(f):
 
     """Ensure functions can receive single or multiple expressions.
 
-    Function's first positional argument must be called ``expressions``.
+    A single expression is a string, and multiple expressions is a sequence
+    of strings. Function's first positional argument must be ``expressions``.
 
-    :param f:
+    :param callable f:
         Decorated function.
+
+    :rtype callable:
+
+    :return:
+        Wrapped function.
     """
 
     @functools.wraps(f)
@@ -76,7 +82,7 @@ def _normalize_expressions(f):
 
         if isinstance(expressions, str):
             expressions = (expressions, )
-        elif not isinstance(expressions, Sequence):
+        elif not isinstance(expressions, Iterable):
             raise TypeError(f"not a sequence: {expressions=}")
 
         return f(tuple(expressions), *args, **kwargs)
