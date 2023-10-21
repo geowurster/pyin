@@ -2,7 +2,7 @@
 
 
 import abc
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable
 import argparse
 import builtins
 from collections import deque
@@ -1018,7 +1018,7 @@ def main(
         )
 
         input_stream = next(input_stream)
-        if not isinstance(input_stream, Sequence):
+        if not isinstance(input_stream, Iterable):
             print(
                 "ERROR: '--gen' expression did not produce an iterable"
                 " object:", generate_expr, file=sys.stderr)
