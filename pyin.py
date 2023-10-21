@@ -97,17 +97,23 @@ def compile(
         stream_variable=_DEFAULT_STREAM_VARIABLE,
         scope=None):
 
-    """Compile expressions to Python :module:`code` objects.
+    """Compile expressions to operation classes.
 
-    Python's :func:`eval` compiles expressions before executing, but does not
-    cache them. Given that we execute each expression as much as once per
-    line, we can achieve a noticeable speedup by pre-compiling the expressions.
+    An operation class is a subclass of ``OpBase()``.
 
-    :param expressions:
-        Expressions to compile.
-    :param stream_variable:
-        Instruct operations to use this variable when evaluating Python
-        expressions against the entire stream.
+    :param str or sequence expressions:
+        One or more expressions to compile.
+    :param str variable:
+        Operations should use this variable when inserting an item into
+        a scope during evaluation.
+    :param str stream_variable:
+        Like ``variable`` but when referencing the entire data stream.
+
+    :rtype sequence:
+
+    :return:
+        A sequence of compiled operations. An operation is a subclass of
+        ``OpBase()``.
     """
 
     compiled = []
@@ -587,20 +593,30 @@ class OpFilter(OpEval, directives=('%filter', '%filterfalse')):
 
     These are equivalent:
 
-    .. code-block::
-
-        %filter "i > 2"
-        %filterfalse "i <= 2"
+      %filter "i > 2"
+      %filterfalse "i <= 2"
     """
 
     def __call__(self, stream):
 
+        # Can't just use 'filter()' and 'it.filterfalse()' directly since we
+        # have to evaluate a Python expression somewhere. Instead, fork the
+        # stream and use one copy for evaluating expressions, and one copy
+        # for values to emit.
+
         stream, selection = it.tee(stream, 2)
         selection = super().__call__(selection)
 
-        if self.directive == '%filterfalse':
+        if self.directive == '%filter':
+            pass
+        elif self.directive == '%filterfalse':
             selection = (not s for s in selection)
+        else:
+            raise RuntimeError(
+                f"invalid directive: {self.directive}")  # pragma no cover
 
+        # Filter based on truthy-ness check rather than a strict True/False
+        # check. This is how 'filter()' works too.
         return it.compress(stream, selection)
 
 
