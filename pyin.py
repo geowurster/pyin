@@ -164,12 +164,6 @@ def compile(
                     f"missing argument '{param.name}' for directive:"
                     f" {directive}")
 
-            # Make sure we can cast
-            if param.annotation == inspect._empty:
-                raise RuntimeError(
-                    f"argument '{param.name}' for directive '{directive}' is"
-                    f" missing a type annotation")
-
             args.append(param.annotation(tokens.pop(0)))
 
         kwargs = {
@@ -418,9 +412,11 @@ class OpBase(abc.ABC):
     """Base class for defining an operation.
 
     Subclassers can use positional-only arguments and type annotations in
-    :meth:`__init__` to define arguments associated with the directive and
+    ``__init__`` to define arguments associated with the directive and
     their type.
     """
+
+    directives = None
 
     def __init__(
             self,
@@ -432,19 +428,17 @@ class OpBase(abc.ABC):
     ):
 
         """
-        :param directive:
+        :param str directive:
             The directive actually usd in the expressions. Some operation
             classes can support multiple directives.
-        :param variable:
-            Operations executing expressions with Python's :obj:`eval` should
+        :param str variable:
+            Operations executing expressions with Python's ``eval()`` should
             place data in this variable in the scope.
-        :param stream_variable:
-            Operations executing expressions against the stream object itself
-            with Python's :obj:`eval` should place the stream in this variable
-            in the scope.
-        :param scope:
-            Operations executing expressions with Python's :obj:`eval` should
-            execute in this scope.
+        :param str stream_variable:
+            Like ``variable`` but for referencing the full stream of data.
+        :param dict scope:
+            Operations executing expressions with Python's ``eval(0)`` should
+            use this global scope.
         """
 
         self.directive = directive
@@ -461,23 +455,51 @@ class OpBase(abc.ABC):
 
     def __init_subclass__(cls, /, directives: Sequence, **kwargs):
 
-        """Register mapping of directives to classes.
+        """Register subclass and its directives.
 
         Also populates ``Operations.directives`` class variable.
 
-        :param directives:
-            Sequence of directives like ``('%upper', '%lower')`` supported by
-            this class.
-        :param **kwargs:
-            Arguments for class.
+        :param str directives:
+            Directives supported by this class. Like ``('%upper', '%lower')``.
+        :param **kwargs kwargs:
+            Additional arguments.
         """
-
-        super().__init_subclass__(**kwargs)
 
         global _DIRECTIVE_REGISTRY
 
+        # First validate subclass
+        sig = inspect.signature(cls.__init__)
+
+        # Positional-only arguments are used to define arguments for a
+        # directive.
+        pos_only = [
+            p for p in sig.parameters.values()
+            if p.kind == p.POSITIONAL_ONLY
+        ]
+        pos_only = pos_only[1:]  # First is 'self'
+        if not pos_only:
+            raise RuntimeError(
+                f"{cls.__name__}.__init__() is malformed and lacks the"
+                f" positional-only arguments used for determining directive"
+                f" arguments"
+            )
+
+        # Positional arguments _must_ be type hinted for casting purposes.
+        for param in pos_only:
+            if param.annotation == inspect._empty:
+                raise RuntimeError(
+                    f"argument '{param.name}' for directive"
+                    f" '{cls.__name__}.__init__()' must have a type annotation"
+                )
+
+        # Register subclasss
+        super().__init_subclass__(**kwargs)
         for d in directives:
-            if d in _DIRECTIVE_REGISTRY:
+            if d[0] != '%' or d.count('%') != 1:
+                raise RuntimeError(
+                    f"directive '{d}' for class '{cls.__name__}' is not"
+                    f" prefixed with a single '%'")
+            elif d in _DIRECTIVE_REGISTRY:
                 raise RuntimeError(
                     f"directive '{d}' conflict:"
                     f" {cls} {_DIRECTIVE_REGISTRY[d]}")
@@ -487,20 +509,28 @@ class OpBase(abc.ABC):
 
     def __repr__(self) -> str:
 
-        """Approximate representation of :obj:`OpBase` instance."""
+        """Approximate representation of operation instance."""
 
-        return f"<{self.__class__.__name__}({self.directive})>"
+        return f"<{self.__class__.__name__}({self.directive}, ...)>"
 
     @abc.abstractmethod
     def __call__(self, stream: Sequence) -> Sequence:
 
         """Process a stream of data.
 
+        Implementation must:
+
+        1. Treat ``stream`` as an iterable object and be otherwise agnostic
+           to its type. Iterating directly as a ``for`` loop, or wrapping
+           as a generator via ``(i for i in stream)`` are both appropriate.
+        2. Consume all items in ``stream``.
+        3. Be a generator or return an iterator.
+
         :param stream:
-            Input data stream.
+            Input data stream. An iterable object.
 
         :return:
-            Altered data.
+            An iterable object.
         """
 
         raise NotImplementedError  # pragma no cover

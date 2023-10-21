@@ -78,7 +78,7 @@ def test_OpBase_repr():
             raise NotImplementedError
 
     o = Op('%dir', variable='v', stream_variable='stream', scope={})
-    assert repr(o) == '<Op(%dir)>'
+    assert repr(o) == '<Op(%dir, ...)>'
 
 
 def test_OpBase_init_directive_mismatch():
