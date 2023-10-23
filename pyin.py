@@ -376,6 +376,7 @@ def eval(
     """
 
     scope = {
+        '__builtins__': builtins,
         'it': it,
         'op': op,
         'reduce': functools.reduce
