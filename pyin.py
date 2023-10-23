@@ -621,8 +621,7 @@ class OpFilter(OpEval, directives=('%filter', '%filterfalse')):
         return it.compress(stream, selection)
 
 
-class OpAccumulate(
-        OpBase, directives=('%acc', '%accumulate', '%collect')):
+class OpAccumulate(OpBase, directives=('%accumulate', )):
 
     """Accumulate the entire stream into a single object."""
 
@@ -630,7 +629,7 @@ class OpAccumulate(
         yield list(stream)
 
 
-class OpFlatten(OpBase, directives=('%explode', '%flatten', '%chain')):
+class OpChain(OpBase, directives=('%chain', )):
 
     """Flatten the stream by one level – like :obj:`itertools.chain`."""
 
