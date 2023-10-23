@@ -379,6 +379,10 @@ def eval(
         'reduce': functools.reduce
     }
 
+    # Make the scope discoverable with a bit of introspection. Callers may
+    # want to find out what is available. This is documented.
+    scope['_scope'] = scope
+
     importer(expressions, scope=scope)
     compiled_expressions = compile(
         expressions,
