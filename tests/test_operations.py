@@ -28,7 +28,7 @@ def test_flatten():
 
     stream = [range(3)]
     expected = [0, 1, 2]
-    actual = list(pyin.eval("%flatten", stream))
+    actual = list(pyin.eval("%chain", stream))
 
     assert expected == actual
 
