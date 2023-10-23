@@ -8,7 +8,7 @@ import builtins
 from collections import deque
 import csv
 import functools
-import importlib
+import importlib.util
 import inspect
 import itertools as it
 import json
