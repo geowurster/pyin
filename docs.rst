@@ -133,6 +133,19 @@ An expression containing a reference to an invalid object will fail to execute:
     $ echo 'LICENSE.txt' | pyin 'os.path.ex(i)'
     ERROR: module 'posixpath' has no attribute 'ex'
 
+Setup
+-----
+
+Python statements can be executed during setup to modify the global scope:
+
+.. code::
+
+    $ ls LICENSE.txt \
+      | pyin \
+        -s "from os.path import exists" \
+        '(i, exists(i))' \
+    ('LICENSE.txt', True)
+
 Complex Example
 ---------------
 
