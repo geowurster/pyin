@@ -176,3 +176,63 @@ def test_OpBatched():
 
     actual = list(pyin.eval(['%batched', '2'], range(5)))
     assert [(0, 1), (2, 3), (4, )] == actual
+
+
+@pytest.mark.parametrize('directive, expected', [
+    ('%split', ['Word1', 'Word2']),
+    ('%lower', ' word1 word2 '),
+    ('%upper', ' WORD1 WORD2 '),
+    ('%strip', 'Word1 Word2'),
+    ('%lstrip', 'Word1 Word2 '),
+    ('%rstrip', ' Word1 Word2')
+])
+def test_OpStrNoArgs(directive, expected):
+
+    """Tests for ``OpStrNoArgs()``."""
+
+    value = ' Word1 Word2 '
+
+    actual = list(pyin.eval(directive, [value]))
+    assert len(actual) == 1
+    actual = actual[0]
+
+    assert expected == actual
+
+
+@pytest.mark.parametrize('directive, argument, expected', [
+    ('%join', ' ', '- Word1 Word2 -'),
+    ('%splits', '1', ['- Word', ' Word2 -']),
+    ('%partition', 'W', ('- ', 'W', 'ord1 Word2 -')),
+    ('%rpartition', 'W', ('- Word1 ', 'W', 'ord2 -')),
+    ('%strips', '-', ' Word1 Word2 '),
+    ('%lstrips', '-', ' Word1 Word2 -'),
+    ('%rstrips', '-', '- Word1 Word2 ')
+])
+def test_OpStrOneArg(directive, argument, expected):
+
+    """Tests for ``OpStrOneArg()``."""
+
+    value = '- Word1 Word2 -'
+    if directive == '%join':
+        value = value.split()
+
+    actual = list(pyin.eval([directive, argument], [value]))
+    assert len(actual) == 1
+    actual = actual[0]
+
+    assert expected == actual
+
+
+def test_OpReplace():
+
+    """Tests for ``OpReplace()``."""
+
+    value = 'word'
+    expected = 'yard'
+
+    expressions = ['%replace', 'wo', 'ya']
+    actual = list(pyin.eval(expressions, [value]))
+    assert len(actual) == 1
+    actual = actual[0]
+
+    assert expected == actual
