@@ -294,3 +294,35 @@ def test_variable_invalid(runner, flag):
     assert result.exit_code == 2
     assert not result.output
     assert 'string is not valid as a variable: 1' in result.err
+
+
+def test_setup(runner):
+
+    """Test environment setup."""
+
+    result = runner.invoke(_cli_entrypoint, [
+        '--gen', 'range(1)',
+        '-s', 'import itertools as itertest',
+        'itertest.__name__'
+    ])
+
+    assert result.exit_code == 0
+    assert not result.err
+    assert result.output == 'itertools' + os.linesep
+
+
+def test_setup_syntax_error(runner):
+
+    """``SyntaxError`` in a setup statement."""
+
+    statement = '1 invalid syntax'
+    expected = f'ERROR: setup statement contains a syntax error: {statement}'
+
+    result = runner.invoke(_cli_entrypoint, [
+        '--gen', 'range(1)',
+        '-s', statement
+    ])
+
+    assert result.exit_code == 1
+    assert not result.output
+    assert result.err == expected + os.linesep

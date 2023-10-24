@@ -62,6 +62,12 @@ _DEFAULT_VARIABLE = 'i'
 _DEFAULT_STREAM_VARIABLE = 'stream'
 _IMPORTER_REGEX = re.compile(r"([a-zA-Z_.][a-zA-Z0-9_.]*)")
 _DIRECTIVE_REGISTRY = {}
+_DEFAULT_SCOPE = {
+    '__builtins__': builtins,
+    'it': it,
+    'op': op,
+    'reduce': functools.reduce
+}
 
 
 def _normalize_expressions(f):
@@ -244,6 +250,7 @@ def importer(expressions, scope):
 def eval(
         expressions,
         stream,
+        scope=None,
         variable=_DEFAULT_VARIABLE,
         stream_variable=_DEFAULT_STREAM_VARIABLE
 ):
@@ -268,12 +275,11 @@ def eval(
         An iterator of results.
     """
 
-    scope = {
-        '__builtins__': builtins,
-        'it': it,
-        'op': op,
-        'reduce': functools.reduce
-    }
+    if scope is None:
+        scope = {}
+
+    # Update with standard baseline
+    scope.update(_DEFAULT_SCOPE)
 
     # Make the scope discoverable with a bit of introspection. Callers may
     # want to find out what is available. This is documented.
@@ -919,6 +925,11 @@ def argparse_parser():
         help=f"Write this after every line. Defaults to: {repr(os.linesep)}."
     )
     aparser.add_argument(
+        '-s', '--setup', action='append',
+        help="Execute one or more Python statements to pre-initialize objects,"
+             " import objects with new names, etc."
+    )
+    aparser.add_argument(
         '--variable',
         metavar='string',
         type=_type_variable,
@@ -983,6 +994,7 @@ def main(
         outfile,
         expressions,
         linesep,
+        setup,
         variable,
         stream_variable):
 
@@ -1001,6 +1013,8 @@ def main(
         Evaluate these expressions.
     :param str linesep:
         Postfix for each output line.
+    :param list setup:
+        Execute these Python statements to set up the environment.
     :param str variable:
         Expressions reference input data via this variable.
     :param str stream_variable:
@@ -1011,6 +1025,34 @@ def main(
     :returns:
         Exit code.
     """
+
+    # ==== Setup ==== #
+
+    # Just let 'eval()' handle scope creation
+    if not setup:
+        scope = None
+
+    # Run setup 'exec()' statements.
+    else:
+
+        # Will eventually be treated as the global scope in 'eval()'. Only
+        # need a local scope to get data out of the 'exec()' calls. Local
+        # scope is copied to global scope.
+        scope = importer(setup, _DEFAULT_SCOPE.copy())
+        local_scope = {}
+
+        for statement in setup:
+            try:
+                code = builtins.compile(statement, '<string>', 'exec')
+            except SyntaxError as e:
+                raise SyntaxError(
+                    f"setup statement contains a syntax error:"
+                    f" {e.text.strip()}"
+                )
+            exec(code, scope, local_scope)
+            scope.update(local_scope)
+
+        del local_scope
 
     # ==== Fetch Input Data Stream ==== #
 
@@ -1046,7 +1088,7 @@ def main(
     # ==== Process Data ==== #
 
     for line in eval(
-            expressions, input_stream,
+            expressions, input_stream, scope=scope,
             variable=variable, stream_variable=stream_variable):
 
         if not isinstance(line, str):
