@@ -15,7 +15,7 @@ import os
 import re
 from types import CodeType
 from typing import (
-    Any, Callable, Iterable, List, Optional, Sequence, TextIO, Tuple, Union)
+    Callable, Iterable, List, Optional, Sequence, TextIO, Tuple, Union)
 
 
 __all__ = ['eval']
@@ -362,26 +362,6 @@ def eval(expressions, stream, variable: str = _DEFAULT_VARIABLE):
 # Operations
 
 
-def _first(sequence: Sequence) -> Tuple[Any, Sequence]:
-
-    """Peek at a stream of data.
-
-    Note that the output sequence is not guaranteed to be of the same type
-    as the input sequence. The output sequence is guaranteed to be iterable.
-
-    :param sequence:
-        Peek at first value in this sequence.
-
-    :return:
-        A ``tuple`` with two elements. The first is the next value in
-        ``sequence``, and the second is the reconstructed sequence.
-    """
-
-    sequence = (i for i in sequence)
-    first = next(sequence)
-    return first, it.chain([first], sequence)
-
-
 class BaseOperation(abc.ABC):
 
     """Base class for defining an operation.
@@ -495,7 +475,6 @@ class Eval(BaseOperation, directives=('%eval', )):
                 f" {e.text}"
             )
 
-
     def __call__(self, stream: Iterable):
 
         # Attribute lookup is not free
@@ -532,7 +511,7 @@ class Filter(Eval, directives=('%filter', '%filterfalse')):
 
 
 class Accumulate(
-    BaseOperation, directives=('%acc', '%accumulate', '%collect')):
+        BaseOperation, directives=('%acc', '%accumulate', '%collect')):
 
     """Accumulate the entire stream into a single object."""
 
@@ -743,8 +722,8 @@ def main(
         input_stream = next(input_stream)
         if not isinstance(input_stream, Iterable):
             print(
-                f"ERROR: '--gen' expression did not produce an iterable"
-                f" object:", generate_expr, file=sys.stderr)
+                "ERROR: '--gen' expression did not produce an iterable"
+                " object:", generate_expr, file=sys.stderr)
             return 1
 
         # --skip

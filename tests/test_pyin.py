@@ -302,7 +302,7 @@ def test_import_from_file_in_current_directory(runner):
 
         # Create
         with open(tmpname, 'w') as f:
-            f.write(f"# Part of: test_import_from_file_in_current_directory")
+            f.write("# Part of: test_import_from_file_in_current_directory")
             f.write(os.linesep * 2)
             f.write(textwrap.dedent(inspect.getsource(func)))
 

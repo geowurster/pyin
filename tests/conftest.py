@@ -104,7 +104,6 @@ def reload_pyin():
     importlib.reload(pyin)
 
 
-
 class PyinCliRunner:
 
     """Kind of like ``click.testing.CliRunner()``.
@@ -147,7 +146,7 @@ class PyinCliRunner:
             rawargs: list,
             *,
             input: Union[str, None] = None
-    ) -> "CliRunner":
+    ):
 
         """Execute a command and return the result.
 
