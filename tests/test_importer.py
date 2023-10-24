@@ -3,8 +3,6 @@
 
 import os
 
-import pytest
-
 import pyin
 
 

@@ -87,7 +87,7 @@ def test_BaseOperation_init_directive_mismatch():
     with pytest.raises(ValueError) as e:
         Op('%mismatch', variable='v', scope={})
 
-    assert "with directive '%mismatch' but supports: %dir"
+    assert "with directive '%mismatch' but supports: %dir" in str(e.value)
 
 
 def test_Eval_syntax_error():
