@@ -811,6 +811,128 @@ class OpBatched(OpBase, directives=('%batched', )):
             yield tuple(chunk)
 
 
+class OpStrNoArgs(OpBase, directives=(
+        '%split', '%lower', '%upper', '%strip', '%lstrip', '%rstrip')):
+
+    """Text processing that doesn't require an argument.
+
+    Implements several directives mapping directly to ``str`` methods.
+    """
+
+    def __call__(self, stream):
+
+        """Process data.
+
+        :param iterable stream:
+            The data stream.
+
+        :rtype str:
+
+        :return:
+            A new string.
+        """
+
+        return map(op.methodcaller(self.directive[1:]), stream)
+
+
+class OpStrOneArg(OpBase, directives=(
+        '%join', '%splits',
+        '%partition', '%rpartition',
+        '%strips', '%lstrips', '%rstrips')):
+
+    # Possibly differentiating between things like '%strip' and '%strips' is
+    # too much, and instead we should just have '%strip string'?
+
+    """Like ``OpStrNoArgs()`` but for methods requiring one argument.
+
+    Directives map directly to ``str`` methods. Note that some of these
+    directives are very similar to those implemented by ``OpStrNoArgs()``,
+    but without a default value.
+    """
+
+    def __init__(self, directive: str, argument: str, /, **kwargs):
+
+        """``OpStrOneArg()`` constructor.
+
+        :param str directive:
+            Working with this directive.
+        :param str argument:
+            For ``str`` method.
+        :param **kwargs kwargs:
+            For parent implementation.
+        """
+
+        super().__init__(directive, **kwargs)
+
+        self.argument = argument
+
+    def __call__(self, stream):
+
+        """Process data.
+
+        :param iterable stream:
+            The data stream.
+
+        :return:
+            An iterable of new strings.
+        """
+
+        mapping = {
+            '%strips': 'strip',
+            '%lstrips': 'lstrip',
+            '%rstrips': 'rstrip',
+            '%splits': 'split',
+            '%lsplits': 'lsplit',
+            '%rsplits': 'rsplit',
+        }
+
+        method_name = mapping.get(self.directive, self.directive[1:])
+
+        if method_name == 'join':
+            return map(self.argument.join, stream)
+
+        else:
+            func = op.methodcaller(method_name, self.argument)
+            return map(func, stream)
+
+
+class OpReplace(OpBase, directives=('%replace', )):
+
+    """Replace a portion of a string with a new string."""
+
+    def __init__(self, directive: str, old: str, new: str, /, **kwargs):
+
+        """``OpReplace()`` constructor.
+
+        :param str directive:
+            Currently active directive.
+        :param str old:
+            Replace all occurrences of this substring with ``new``.
+        :param str new:
+            See ``old``.
+        :param **kwargs kwargs:
+            See parent implementation.
+        """
+
+        super().__init__(directive, **kwargs)
+
+        self.old = old
+        self.new = new
+
+    def __call__(self, stream):
+
+        """Process data.
+
+        :param iterable stream:
+            The data stream.
+
+        :return:
+            Replaced strings.
+        """
+
+        return map(op.methodcaller('replace', self.old, self.new), stream)
+
+
 ###############################################################################
 # Command Line Interface
 
