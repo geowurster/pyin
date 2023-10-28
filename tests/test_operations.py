@@ -5,6 +5,8 @@ When adding a new test, check first if it can be included in:
 1. ``test_simple_item()`` - Single input/output element and no arguments.
 2. ``test_simple_item_args()`` - Above but requires arguments.
 3. ``test_simple_stream()`` - Shape of stream. Arguments optional.
+
+Each also ensures that an empty stream is handled properly.
 """
 
 
@@ -69,6 +71,9 @@ def test_simple_item(directive, item, expected):
     assert len(actual) == 1
     assert actual[0] == expected
 
+    # Empty stream
+    assert list(pyin.eval(directive, [])) == []
+
 
 @pytest.mark.parametrize("directive, args, data, expected", [
     ('%replace', ('wo', 'ya'), 'word', 'yard'),
@@ -93,6 +98,9 @@ def test_simple_item_args(directive, args, data, expected):
 
     assert len(actual) == 1
     assert actual[0] == expected
+
+    # Empty stream
+    assert list(pyin.eval(expressions, [])) == []
 
 
 @pytest.mark.parametrize("directive, args, stream, expected", [
@@ -126,6 +134,9 @@ def test_simple_stream(directive, args, stream, expected):
     actual = list(pyin.eval(expressions, stream))
     assert actual == expected
 
+    # Empty stream
+    assert list(pyin.eval(expressions, [])) == []
+
 
 def test_Eval_syntax_error():
 
@@ -154,3 +165,6 @@ def test_OpCSVDict(csv_with_header_content):
 
     text_rows = list(pyin.eval('%csvd', row_dicts))
     assert text_rows == csv_lines
+
+    # Empty stream
+    assert list(pyin.eval('%csvd', [])) == []

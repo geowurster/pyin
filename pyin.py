@@ -467,6 +467,7 @@ class OpBase(abc.ABC):
            as a generator via ``(i for i in stream)`` are both appropriate.
         2. Consume all items in ``stream``.
         3. Be a generator or return an iterator.
+        4. Be prepared for the input ``stream`` to not contain any data.
 
         An implementation should also be conscious of function call overhead.
         ``pyin`` primarily seeks to be friendly and convenient, but fast is
@@ -595,7 +596,14 @@ class OpAccumulate(OpBase, directives=('%accumulate', )):
 
     def __call__(self, stream):
 
-        yield list(stream)
+        # At first glance the simplest implemenation is:
+        #   yield list(stream)
+        # however, if 'stream' is empty this is equivalent to:
+        #   yield []
+        # which converts the contents of 'stream' into a single empty list.
+        stream = list(stream)
+        if stream:
+            yield stream
 
 
 class OpChain(OpBase, directives=('%chain', )):
@@ -617,7 +625,10 @@ class OpJSON(OpBase, directives=('%json', )):
 
     def __call__(self, stream):
 
-        first, stream = _peek(stream)
+        try:
+            first, stream = _peek(stream)
+        except StopIteration:
+            return []
 
         # 'json.loads/dumps()' both use these objects internally, but create
         # an instance with every call. Presumably this is faster.
@@ -665,7 +676,7 @@ class OpStream(OpEval, directives=('%stream', )):
 
         # Use the parent implementation and a bit of trickery to instead
         # operate on the stream itself.
-        return next(super().__call__([stream]))
+        return next(super().__call__([stream]), [])
 
 
 class OpCSVDict(OpBase, directives=('%csvd', )):
@@ -679,7 +690,10 @@ class OpCSVDict(OpBase, directives=('%csvd', )):
 
     def __call__(self, stream):
 
-        first, stream = _peek(stream)
+        try:
+            first, stream = _peek(stream)
+        except StopIteration:
+            return
 
         # Reading from a CSV
         if isinstance(first, str):
@@ -721,7 +735,10 @@ class OpReversed(OpBase, directives=('%rev', '%revstream')):
         # Reverse each item
         if self.directive in ('%rev', '%reversed'):
 
-            first, stream = _peek(stream)
+            try:
+                first, stream = _peek(stream)
+            except StopIteration:
+                return
 
             # Can reverse these objects by slicing while preserving the
             # original type.
