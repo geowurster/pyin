@@ -1099,8 +1099,21 @@ def main(
         if not isinstance(line, str):
             line = repr(line)
 
-        outfile.write(line)
-        outfile.write(linesep)
+        try:
+            outfile.write(line)
+            outfile.write(linesep)
+
+        # Probably piping to something like '$ head' that intentionally does
+        # not fully consume the stream. Python docs have a note recommending
+        # handling. Note that this is not an error in our case, so we do not
+        # 'exit(1)'.
+        # https://docs.python.org/3/library/signal.html?#note-on-sigpipe
+        except BrokenPipeError:
+            # Python flushes standard streams on exit; redirect remaining output
+            # to devnull to avoid another BrokenPipeError at shutdown
+            devnull = os.open(os.devnull, os.O_WRONLY)
+            os.dup2(devnull, sys.stdout.fileno())
+            break
 
     return 0
 
