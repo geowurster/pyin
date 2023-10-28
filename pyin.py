@@ -117,6 +117,8 @@ def compile(
         a scope during evaluation.
     :param str stream_variable:
         Like ``variable`` but when referencing the entire data stream.
+    :param dict or None scope:
+        Import into this dictionary.
 
     :rtype sequence:
 
@@ -265,6 +267,9 @@ def eval(
         One or more expressions.
     :param iterable stream:
         Map all ``expressions`` across each item.
+    :param dict or None scope:
+        A scope for Python's builtin ``eval()``. This function automatically
+        imports modules referenced in ``expressions`` into the scope.
     :param str variable:
         Each item in ``stream`` should be stored in this variable in the
         scope.
@@ -1110,7 +1115,7 @@ def _cli_entrypoint(rawargs=None):
 
     Raises ``SystemExit`` instead of returning a value.
 
-    :param rawargs:
+    :param list or None rawargs:
         Like :obj:`sys.argv` (used by default) but without the interpreter
         path. Used in testing.
 
