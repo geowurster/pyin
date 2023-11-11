@@ -46,7 +46,3 @@ Developing
 
     # Optionally, 'tox' can be used to test on multiple Python versions
     $ (venv) tox
-
-    # Lint
-    $ (venv) pycodestyle
-    $ (venv) pydocstyle
