@@ -436,8 +436,8 @@ Stream Directives
 Accumulate all elements in the stream into a single iterable object. Equivalent
 to ``%stream '[list(s)]'``.
 
-``%batched N``
-^^^^^^^^^^^^^^
+``%batched``
+^^^^^^^^^^^^
 
 ::
 
