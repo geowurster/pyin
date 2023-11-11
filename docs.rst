@@ -580,6 +580,15 @@ Equivalent to:
 
   %stream 'itertools.chain(s)'
 
+``%islice``
+^^^^^^^^^^^
+
+Equivalent to:
+
+::
+
+  %stream 'it.islice(s)'
+
 ``%revstream``
 ^^^^^^^^^^^^^^
 

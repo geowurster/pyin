@@ -222,3 +222,14 @@ def test_OpCast(directive, value, expected):
     actual = actual[0]
 
     assert func(expected, actual)
+
+
+@pytest.mark.parametrize("count", [0, 1])
+def test_OpISlice(count):
+
+    """Tests for ``OpISlice()``."""
+
+    data = range(3)
+    expected = list(it.islice(data, count))
+    actual = list(pyin.eval(['%islice', str(count)], data))
+    assert expected == actual

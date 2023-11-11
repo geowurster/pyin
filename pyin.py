@@ -862,6 +862,18 @@ class OpCast(OpBase, directives=(
         return map(func, stream)
 
 
+class OpISlice(OpBase, directives=('%islice', )):
+
+    """Take at most the first N items from the stream."""
+
+    def __init__(self, directive: str, count: int, /, **kwargs):
+        super().__init__(directive, **kwargs)
+        self.count = count
+
+    def __call__(self, stream):
+        return it.islice(stream, self.count)
+
+
 ###############################################################################
 # Command Line Interface
 
