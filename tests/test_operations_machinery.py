@@ -85,3 +85,27 @@ def test_OpBase_subclass_no_prefix(directive):
 
     msg = f"'{directive}' for class 'OpTest' is not prefixed with a single '%'"
     assert msg in str(e.value)
+
+
+def test_OpBase_repr():
+
+    """Check :meth:`OpBase.__repr__()`"""
+
+    class Op(pyin.OpBase, directives=('%dir', )):
+        def __call__(self, stream):
+            raise NotImplementedError
+
+    o = Op('%dir', variable='v', stream_variable='stream', scope={})
+    assert repr(o) == '<Op(%dir, ...)>'
+
+
+def test_OpBase_init_directive_mismatch():
+
+    class Op(pyin.OpBase, directives=('%dir', )):
+        def __call__(self, stream):
+            raise NotImplementedError
+
+    with pytest.raises(ValueError) as e:
+        Op('%mismatch', variable='v', stream_variable='stream', scope={})
+
+    assert "with directive '%mismatch' but supports: %dir" in str(e.value)

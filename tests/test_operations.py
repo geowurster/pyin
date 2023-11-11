@@ -50,49 +50,6 @@ def test_Filter(directive, expected):
     assert expected == actual
 
 
-def test_OpBase_directive_registry_conflict():
-
-    """Two operations register the same directive."""
-
-    class Op1(pyin.OpBase, directives=('%dir', )):
-        pass
-
-    with pytest.raises(RuntimeError) as e:
-
-        # The test lives in 'OpBase.__init_subclass__()', so the class
-        # cannot even be defined.
-        class Op2(pyin.OpBase, directives=('%dir', )):
-            pass
-
-    assert "directive '%dir' conflict" in str(e.value)
-    assert 'Op1' in str(e.value)
-    assert 'Op2' in str(e.value)
-
-
-def test_OpBase_repr():
-
-    """Check :meth:`OpBase.__repr__()`"""
-
-    class Op(pyin.OpBase, directives=('%dir', )):
-        def __call__(self, stream):
-            raise NotImplementedError
-
-    o = Op('%dir', variable='v', stream_variable='stream', scope={})
-    assert repr(o) == '<Op(%dir, ...)>'
-
-
-def test_OpBase_init_directive_mismatch():
-
-    class Op(pyin.OpBase, directives=('%dir', )):
-        def __call__(self, stream):
-            raise NotImplementedError
-
-    with pytest.raises(ValueError) as e:
-        Op('%mismatch', variable='v', stream_variable='stream', scope={})
-
-    assert "with directive '%mismatch' but supports: %dir" in str(e.value)
-
-
 def test_Eval_syntax_error():
 
     """Produce a helpful error when encountering :obj:`SyntaxError`.
