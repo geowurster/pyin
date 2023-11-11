@@ -560,20 +560,33 @@ class OpFilter(OpEval, directives=('%filter', '%filterfalse')):
         # stream and use one copy for evaluating expressions, and one copy
         # for values to emit.
 
-        stream, selection = it.tee(stream, 2)
-        selection = super().__call__(selection)
+        is_none = self.expression.lower() == 'none'
 
-        if self.directive == '%filter':
-            pass
-        elif self.directive == '%filterfalse':
-            selection = (not s for s in selection)
+        # Just use 'filter()'. Hard to express as interactions with the
+        # parent 'OpEval()' class.
+        if is_none and self.directive == '%filter':
+            return filter(None, stream)
+
+        # Just use 'itertools.filterfalse()'. Hard to express as interactions
+        # with the parent 'OpEval()' class.
+        elif is_none and self.directive == '%filterfalse':
+            return it.filterfalse(None, stream)
+
+        # Implement via 'itertools.compress()'. Equivalent to:
+        #   filter(lambda i: <expression>, stream)
+        # which is extremely hard to structure. Instead, just rely on Python's
+        # 'truthy' checks.
+        elif self.directive in ('%filter', '%filterfalse'):
+            stream, selection = it.tee(stream, 2)
+            selection = super().__call__(selection)
+            if self.directive == '%filterfalse':
+                selection = (not s for s in selection)
+
+            return it.compress(stream, selection)
+
         else:
             raise RuntimeError(
                 f"invalid directive: {self.directive}")  # pragma no cover
-
-        # Filter based on truthy-ness check rather than a strict True/False
-        # check. This is how 'filter()' works too.
-        return it.compress(stream, selection)
 
 
 class OpAccumulate(OpBase, directives=('%accumulate', )):

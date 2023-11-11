@@ -34,21 +34,19 @@ def test_flatten():
     assert expected == actual
 
 
-@pytest.mark.parametrize("directive,expected", [
-    ('%filter', None),
-    ('%filterfalse', None)
+@pytest.mark.parametrize("expressions, data, expected", [
+    (('%filter', 'None'), range(3), [1, 2]),
+    (('%filterfalse', 'None'), range(3), [0]),
+    (('%filter', 'i >= 2'), range(5), [2, 3, 4]),
+    (('%filterfalse', 'i >= 2'), range(5), [0, 1])
 ])
-def test_Filter(directive, expected):
+def test_OpFilter(expressions, data, expected):
 
-    data = list(range(10))
+    """Tests for ``OpFilter()``."""
 
-    mapping = {'%filter': filter, '%filterfalse': it.filterfalse}
-    func = mapping[directive]
+    actual = list(pyin.eval(expressions, data))
 
-    expected = list(func(lambda x: x > 5, data))
-    actual = list(pyin.eval([directive, "i > 5"], data))
-
-    assert expected == actual
+    assert actual == expected
 
 
 def test_Eval_syntax_error():
