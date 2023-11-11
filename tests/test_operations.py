@@ -4,6 +4,7 @@
 import csv
 import itertools as it
 import json
+import operator as op
 import os
 
 import pytest
@@ -193,3 +194,31 @@ def test_OpReplace():
     actual = actual[0]
 
     assert expected == actual
+
+
+@pytest.mark.parametrize("directive,value,expected", [
+    ('%bool', 1, True),
+    ('%bool', 0, False),
+    ('%dict', [('k', 'v')], {'k': 'v'}),
+    ('%float', '1', 1.0),
+    ('%float', '1.2', 1.2),
+    ('%int', '0', 0),
+    ('%list', 'abc', ['a', 'b', 'c']),
+    ('%set', 'ijk', {'i', 'j', 'k'}),
+    ('%str', 1.23, '1.23'),
+    ('%tuple', 'xyz', ('x', 'y', 'z'))
+])
+def test_OpCast(directive, value, expected):
+
+    """Tests for ``OpCast()``."""
+
+    if directive == '%bool':
+        func = op.is_
+    else:
+        func = op.eq
+
+    actual = list(pyin.eval(directive, [value]))
+    assert len(actual) == 1
+    actual = actual[0]
+
+    assert func(expected, actual)

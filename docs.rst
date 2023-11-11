@@ -400,8 +400,85 @@ Equivalent to:
 
   'i.upper()'
 
-Filtering
----------
+Type Casting Directives
+-----------------------
+
+Cast from one type to another.
+
+``%bool``
+^^^^^^^^^
+
+Equivalent to:
+
+::
+
+  'bool(i)'
+
+``%dict``
+^^^^^^^^^
+
+Equivalent to:
+
+::
+
+  'dict(i)'
+
+``%float``
+^^^^^^^^^^
+
+Equivalent to:
+
+::
+
+  'float(i)'
+
+``%int``
+^^^^^^^^
+
+Equivalent to:
+
+::
+
+  'int(i)'
+
+``%list``
+^^^^^^^^^
+
+Equivalent to:
+
+::
+
+  'list(i)'
+
+``%set``
+^^^^^^^^
+
+Equivalent to:
+
+::
+
+  'set(i)'
+
+``%str``
+^^^^^^^^
+
+Equivalent to:
+
+::
+
+  'set(i)'
+
+``%tuple``
+^^^^^^^^^^
+
+Equivalent to:
+
+::
+
+  'tuple(i)'
+
+Filtering Directives
+--------------------
 
 Data elimination.
 

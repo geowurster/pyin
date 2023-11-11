@@ -852,6 +852,16 @@ class OpReplace(OpBase, directives=('%replace', )):
         return map(op.methodcaller('replace', self.old, self.new), stream)
 
 
+class OpCast(OpBase, directives=(
+        '%bool', '%dict', '%float', '%int', '%list', '%set', '%str', '%tuple')):
+
+    """Cast to a builtin Python type."""
+
+    def __call__(self, stream):
+        func = getattr(builtins, self.directive[1:])
+        return map(func, stream)
+
+
 ###############################################################################
 # Command Line Interface
 
