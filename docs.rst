@@ -226,6 +226,8 @@ and are described below each notation.
 Text Directives
 ---------------
 
+Text processing.
+
 ``%join``
 ^^^^^^^^^
 
@@ -398,37 +400,72 @@ Equivalent to:
 
   'i.upper()'
 
-Item Directives
----------------
+Filtering
+---------
 
-``%eval``
+Data elimination.
+
+``%filter``
+^^^^^^^^^^^
+
+::
+
+  %filter <expression>
+
+Include items matching the expression. Equivalent to:
+
+::
+
+  %stream 'filter(<expression>, s)'
+
+``%filterfalse``
+^^^^^^^^^^^^^^^^
+
+::
+
+  %filterfalse <expression>
+
+Exclude items matching the expression. Equivalent to:
+
+::
+
+  %stream 'itertools.filterfalse(<expression>, s)'
+
+Structured Data Directives
+--------------------------
+
+Parsing and serializing well-known formats.
+
+``%csvd``
 ^^^^^^^^^
 
+Encode/decode a CSV. If the input is a stream it is read with
+``csv.DictReader()`` in a manner that is equivalent to:
+``%stream 'csv.DictReader(s)'``.
+
+If the input data is a dictionary, first a header row is written with all
+fields, and then all records are written with ``csv.QUOTE_ALL``. It is not
+feasible to recreate this behavior with an expression.
+
+``%json``
+^^^^^^^^^
+
+Encode and decode JSON data. If the input is a string, this is equivalent to:
+
 ::
 
-  %eval <expression>
+  'json.loads(i)'
 
-Mostly users do not need to be aware of this directive. Internally, ``pyin``
-assumes that any expression not associated with a ``directive`` belongs to
-``%eval``. In code terms, these are equivalent:
+otherwise:
 
 ::
 
-  'i + 1'
-  %eval 'i + 1'
+  'json.dumps(i)'
 
-``%rev``
-^^^^^^^^
+Re-grouping Directives
+----------------------
 
-In theory this is equivalent to ``"reversed(i)"``, but in practice often
-equivalent to ``"i[::-1]"``. Calling ``reversed()`` on a string produces a
-``reversed object``, but reversing a string with slicing like ``string[::-1]``
-does produce a string. Same for lists and tuples. ``pyin`` know about a few
-of these special cases and attempts to preserve type. It will sometimes be
-wrong.
-
-Stream Directives
------------------
+Altering how items within the stream are grouped.
 
 ``%accumulate``
 ^^^^^^^^^^^^^^^
@@ -466,58 +503,6 @@ Equivalent to:
 
   %stream 'itertools.chain(s)'
 
-``%csvd``
-^^^^^^^^^
-
-Encode/decode a CSV. If the input is a stream it is read with
-``csv.DictReader()`` in a manner that is equivalent to:
-``%stream 'csv.DictReader(s)'``.
-
-If the input data is a dictionary, first a header row is written with all
-fields, and then all records are written with ``csv.QUOTE_ALL``. It is not
-feasible to recreate this behavior with an expression.
-
-``%filter``
-^^^^^^^^^^^
-
-::
-
-  %filter <expression>
-
-Include items matching the expression. Equivalent to:
-
-::
-
-  %stream 'filter(<expression>, s)'
-
-``%filterfalse``
-^^^^^^^^^^^^^^^^
-
-::
-
-  %filterfalse <expression>
-
-Exclude items matching the expression. Equivalent to:
-
-::
-
-  %stream 'itertools.filterfalse(<expression>, s)'
-
-``%json``
-^^^^^^^^^
-
-Encode and decode JSON data. If the input is a string, this is equivalent to:
-
-::
-
-  'json.loads(i)'
-
-otherwise:
-
-::
-
-  'json.dumps(i)'
-
 ``%revstream``
 ^^^^^^^^^^^^^^
 
@@ -528,6 +513,40 @@ both of the snippets below. See `%rev`_ for more details.
 
   %stream 'reversed(stream)'
   %stream 's[::-1]'
+
+Miscellaneous Directives
+------------------------
+
+Directives not belonging to another category.
+
+``%rev``
+^^^^^^^^
+
+In theory this is equivalent to ``"reversed(i)"``, but in practice often
+equivalent to ``"i[::-1]"``. Calling ``reversed()`` on a string produces a
+``reversed object``, but reversing a string with slicing like ``string[::-1]``
+does produce a string. Same for lists and tuples. This directive knows about
+a few of these special cases, and attempts to preserve type. it will sometimes
+be wrong.
+
+Low-level Directives
+--------------------
+
+``%eval``
+^^^^^^^^^
+
+::
+
+  %eval <expression>
+
+Mostly users do not need to be aware of this directive. Internally, ``pyin``
+assumes that any expression not associated with a ``directive`` belongs to
+``%eval``. In code terms, these are equivalent:
+
+::
+
+  'i + 1'
+  %eval 'i + 1'
 
 ``%stream``
 ^^^^^^^^^^^
