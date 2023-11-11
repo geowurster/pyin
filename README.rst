@@ -44,6 +44,9 @@ Developing
     # Run tests
     $ (venv) pytest --cov pyin --cov-report term-missing
 
+    # Optionally, 'tox' can be used to test on multiple Python versions
+    $ (venv) tox
+
     # Lint
     $ (venv) pycodestyle
     $ (venv) pydocstyle
