@@ -20,9 +20,6 @@ import re
 import traceback
 
 
-__all__ = ['eval']
-
-
 __version__ = '1.0dev'
 __author__ = 'Kevin Wurster'
 __license__ = '''
