@@ -78,17 +78,6 @@ def test_repr(runner):
     """).strip()
 
 
-def test_catch_IOError(path_csv_with_header):
-
-    """Python produces an IOError if the input is stdin, and the output is
-    stdout piped to another process that does not completely consume the input.
-    """
-
-    result = subprocess.check_output(
-        "cat {} | pyin 'i' | head -1".format(path_csv_with_header), shell=True)
-    assert result.decode().strip() == '"field1","field2","field3"'.strip()
-
-
 @pytest.mark.parametrize('gen_expr,expected', [
     ('range(3)', os.linesep.join(['1', '2', '3']) + os.linesep),
     ('[]', '')

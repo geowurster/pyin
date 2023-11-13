@@ -42,7 +42,7 @@ Developing
     $ (venv) pip install -r requirements-dev.txt -e ".[test]"
 
     # Run tests
-    $ (venv) pytest --cov pyin --cov-report term-missing
+    $ (venv) pytest --cov pyin --cov-report term-missing --cov-fail-under 100
 
     # Optionally, 'tox' can be used to test on multiple Python versions
     $ (venv) tox

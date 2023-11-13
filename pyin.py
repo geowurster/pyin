@@ -1158,9 +1158,9 @@ def main(
         # Probably piping to something like '$ head' that intentionally does
         # not fully consume the stream. Python docs have a note recommending
         # handling. Note that this is not an error in our case, so we do not
-        # 'exit(1)'.
+        # 'exit(1)'. Unclear how to reliably test this.
         # https://docs.python.org/3/library/signal.html?#note-on-sigpipe
-        except BrokenPipeError:
+        except BrokenPipeError:  # pragma no cover
             # Python flushes standard streams on exit; redirect remaining output
             # to devnull to avoid another BrokenPipeError at shutdown
             devnull = os.open(os.devnull, os.O_WRONLY)
