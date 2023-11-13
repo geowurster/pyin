@@ -597,7 +597,7 @@ both of the snippets below. See `%rev`_ for more details.
 
 ::
 
-  %stream 'reversed(stream)'
+  %stream 'reversed(s)'
   %stream 's[::-1]'
 
 Miscellaneous Directives

@@ -115,7 +115,7 @@ def test_simple_item_args(directive, args, data, expected):
     ('%filterfalse', ('None', ), range(3), [0]),
     ('%filter', ('i >= 2', ), range(5), [2, 3, 4]),
     ('%filterfalse', ('i >= 2', ), range(5), [0, 1]),
-    ('%stream', ('[i * 10 for i in stream]', ), range(3), [0, 10, 20]),
+    ('%stream', ('[i * 10 for i in s]', ), range(3), [0, 10, 20]),
     ('%batched', ('2', ), range(5), [(0, 1), (2, 3), (4, )]),
     ('%islice', ('0', ), range(3), []),
     ('%islice', ('1', ), range(3), [0]),
