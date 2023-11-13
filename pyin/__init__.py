@@ -3,7 +3,7 @@ It's like sed, but Python!
 """
 
 
-__version__ = '0.5.4'
+__version__ = '1.0dev'
 __author__ = 'Kevin Wurster'
 __email__ = 'wursterk@gmail.com'
 __source__ = 'https://github.com/geowurster/pyin'
