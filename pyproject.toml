@@ -1,0 +1,57 @@
+[project]
+
+name = "pyin"
+version = "1.0dev"
+authors = [
+    {name="Kevin Wurster", email="wursterk@gmail.com"}
+]
+description = "Like sed, but Python!"
+classifiers = [
+    "Development Status :: 7 - Inactive",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Text Processing :: Filters",
+    "Topic :: Text Processing :: General",
+    "Topic :: Utilities",
+]
+license = {text = "BSD-3-Clause"}
+requires-python = ">=3.8"
+readme = "README.rst"
+
+[project.optional-dependencies]
+test = ["pytest>=6.0", "pytest-cov"]
+
+[project.scripts]
+pyin = "pyin:_cli_entrypoint"
+
+[project.urls]
+"Homepage" = "https://github.com/geowurster/pyin"
+
+[build-system]
+requires = ["setuptools"]
+
+[tool.pytest.ini_options]
+# Include only flags for test discovery. The command used by Tox includes
+# additional flags that are more appropriate for something like a CI system.
+minversion = "6.0"
+addopts = "--doctest-modules"
+testpaths = ["docs.rst", "tests/"]
+
+[tool.setuptools]
+py-modules = ["pyin"]
+license-files = ["LICENSE.txt"]
+
+[tool.tox]
+# Include pytest flags that look for additional things, like code coverage.
+legacy_tox_ini = """
+    [tox]
+    min_version = 4.0
+    env_list = py{38,39,310,311,312}
+
+    [testenv]
+    deps =
+        .[test]
+    commands =
+        pytest --cov pyin --cov-report term-missing --cov-fail-under 100
+"""
