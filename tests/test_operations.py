@@ -76,6 +76,8 @@ def test_simple_item(directive, item, expected):
 
 
 @pytest.mark.parametrize("directive, args, data, expected", [
+
+    # 'str' methods
     ('%replace', ('wo', 'ya'), 'word', 'yard'),
     ('%splits', ('ab', ), 'abc', ['', 'c']),
     ('%partition', ('bb', ), 'abbabba', ('a', 'bb', 'abba')),
@@ -84,6 +86,10 @@ def test_simple_item(directive, item, expected):
     ('%lstrips', ('ab', ), 'abcba', 'cba'),
     ('%rstrips', ('ab', ), 'abcba', 'abc'),
     ('%join', ('-', ), ['a', 'b'], 'a-b'),
+
+    # Other tests
+    ('%exec', ("i['new'] = 'val'", ), {'k': 0}, {'k': 0, 'new': 'val'})
+
 ])
 def test_simple_item_args(directive, args, data, expected):
 
@@ -119,6 +125,8 @@ def test_simple_item_args(directive, args, data, expected):
     ('%batched', ('2', ), range(5), [(0, 1), (2, 3), (4, )]),
     ('%islice', ('0', ), range(3), []),
     ('%islice', ('1', ), range(3), [0]),
+    ('%exec', ('del i', ), range(3), []),
+    ('%exec', ('if i == 1: del i', ), range(3), [0, 2])
 
 ])
 def test_simple_stream(directive, args, stream, expected):
