@@ -57,6 +57,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 _DEFAULT_VARIABLE = 'i'
 _DEFAULT_STREAM_VARIABLE = 's'
+_EVAL_DIRECTIVE = '%eval'
 _IMPORTER_REGEX = re.compile(r"([a-zA-Z_.][a-zA-Z0-9_.]*)")
 _DIRECTIVE_REGISTRY = {}
 _DEFAULT_SCOPE = {
@@ -155,7 +156,7 @@ def compile(
         # of the code simpler.
         if directive[0] != '%':
             tokens.insert(0, directive)
-            directive = OpEval.directives[0]
+            directive = _EVAL_DIRECTIVE
 
         if directive not in _DIRECTIVE_REGISTRY:
             raise ValueError(f'invalid directive: {directive}')
@@ -184,11 +185,15 @@ def compile(
 
             args.append(param.annotation(tokens.pop(0)))
 
-        kwargs = {
-            'variable': variable,
-            'scope': scope,
-            'stream_variable': stream_variable
-        }
+        # 'OpBaseEval()' is special in that it receives as scope for Python's
+        # builtin 'eval()', and associated variables.
+        kwargs = {}
+        if issubclass(cls, OpBaseEval):
+            kwargs.update(
+                variable=variable,
+                scope=scope,
+                stream_variable=stream_variable
+            )
 
         compiled.append(cls(*args, **kwargs))
 
@@ -334,9 +339,10 @@ class OpBase(abc.ABC):
     Subclassers are free to reference a variety of attributes on their instance
     that contain a variety of information about how they should execute:
 
-
     directive
-      The directive currently being executed.
+      The directive currently being executed. Set to ``None`` to disable
+      registering. This behavior is useful for base classes that extend
+      ``OpBase()``.
 
     directives
       A list of all supported directives.
@@ -360,30 +366,18 @@ class OpBase(abc.ABC):
     def __init__(
             self,
             directive: str,
-            /,
-            variable,
-            stream_variable,
-            scope
+            # The slash below is significant! Its presence makes the preceding
+            # args positional-only argument, which we look for elsewhere.
+            /
     ):
 
         """
         :param str directive:
             The directive actually usd in the expressions. Some operation
             classes can support multiple directives.
-        :param str variable:
-            Operations executing expressions with Python's ``eval()`` should
-            place data in this variable in the scope.
-        :param str stream_variable:
-            Like ``variable`` but for referencing the full stream of data.
-        :param dict scope:
-            Operations executing expressions with Python's ``eval(0)`` should
-            use this global scope.
         """
 
         self.directive = directive
-        self.variable = variable
-        self.stream_variable = stream_variable
-        self.scope = scope
 
         if self.directive not in self.directives:
             raise ValueError(
@@ -433,18 +427,19 @@ class OpBase(abc.ABC):
 
         # Register subclasss
         super().__init_subclass__(**kwargs)
-        for d in directives:
-            if d[0] != '%' or d.count('%') != 1:
-                raise RuntimeError(
-                    f"directive '{d}' for class '{cls.__name__}' is not"
-                    f" prefixed with a single '%'")
-            elif d in _DIRECTIVE_REGISTRY:
-                raise RuntimeError(
-                    f"directive '{d}' conflict:"
-                    f" {cls} {_DIRECTIVE_REGISTRY[d]}")
+        if directives is not None:
+            for d in directives:
+                if d[0] != '%' or d.count('%') != 1:
+                    raise RuntimeError(
+                        f"directive '{d}' for class '{cls.__name__}' is not"
+                        f" prefixed with a single '%'")
+                elif d in _DIRECTIVE_REGISTRY:
+                    raise RuntimeError(
+                        f"directive '{d}' conflict:"
+                        f" {cls} {_DIRECTIVE_REGISTRY[d]}")
 
-            cls.directives = directives
-            _DIRECTIVE_REGISTRY[d] = cls
+                cls.directives = directives
+                _DIRECTIVE_REGISTRY[d] = cls
 
     def __repr__(self):
 
@@ -480,7 +475,50 @@ class OpBase(abc.ABC):
         raise NotImplementedError  # pragma no cover
 
 
-class OpEval(OpBase, directives=('%eval', )):
+class OpBaseEval(OpBase, directives=None):
+
+    """Base class for operations using Python's builtin ``eval()``."""
+
+    def __init__(
+            self,
+            directive: str,
+            expression: str,
+            /,
+            variable,
+            stream_variable,
+            scope
+    ):
+        """
+        :param str directive:
+            See parent implementation.
+        :param str variable:
+            Operations executing expressions with Python's ``eval()`` should
+            place data in this variable in the scope.
+        :param str stream_variable:
+            Like ``variable`` but for referencing the full stream of data.
+        :param dict scope:
+            Operations executing expressions with Python's ``eval(0)`` should
+            use this global scope.
+        """
+
+        super().__init__(directive)
+
+        self.expression = expression
+        self.variable = variable
+        self.stream_variable = stream_variable
+        self.scope = scope
+
+        try:
+            self.compiled_expression = builtins.compile(
+                self.expression, '<string>', 'eval')
+        except SyntaxError as e:
+            raise SyntaxError(
+                f"expression {repr(self.expression)} contains a syntax error:"
+                f" {e.text}"
+            )
+
+
+class OpEval(OpBaseEval, directives=('%eval', )):
 
     """Evaluate a Python expression with Python's ``eval()``.
 
@@ -505,29 +543,6 @@ class OpEval(OpBase, directives=('%eval', )):
         >>> list(pyin.eval(['%eval', 'i + 1'], range(3)))
         [1, 2, 3]
     """
-
-    def __init__(self, directive: str, expression: str, /, **kwargs):
-
-        """
-        :param str directive:
-            See parent implementation.
-        :param expression:
-            Evaluate this expression with Python's ``eval()``.
-        :param **kwargs kwargs:
-            For parent ``__init__()``.
-        """
-
-        super().__init__(directive, **kwargs)
-
-        self.expression = expression
-        try:
-            self.compiled_expression = builtins.compile(
-                self.expression, '<string>', 'eval')
-        except SyntaxError as e:
-            raise SyntaxError(
-                f"expression {repr(self.expression)} contains a syntax error:"
-                f" {e.text}"
-            )
 
     def __call__(self, stream):
 

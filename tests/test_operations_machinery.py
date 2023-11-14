@@ -95,7 +95,7 @@ def test_OpBase_repr():
         def __call__(self, stream):
             raise NotImplementedError
 
-    o = Op('%dir', variable='v', stream_variable='stream', scope={})
+    o = Op('%dir')
     assert repr(o) == '<Op(%dir, ...)>'
 
 
@@ -106,6 +106,6 @@ def test_OpBase_init_directive_mismatch():
             raise NotImplementedError
 
     with pytest.raises(ValueError) as e:
-        Op('%mismatch', variable='v', stream_variable='stream', scope={})
+        Op('%mismatch')
 
     assert "with directive '%mismatch' but supports: %dir" in str(e.value)
