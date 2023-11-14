@@ -518,7 +518,7 @@ class OpBaseEval(OpBase, directives=None):
             )
 
 
-class OpEval(OpBaseEval, directives=('%eval', )):
+class OpEval(OpBaseEval, directives=('%eval', '%stream')):
 
     """Evaluate a Python expression with Python's ``eval()``.
 
@@ -546,14 +546,28 @@ class OpEval(OpBaseEval, directives=('%eval', )):
 
     def __call__(self, stream):
 
-        # Attribute lookup is not free
-        expr = self.compiled_expression
-        variable = self.variable
-        scope = self.scope
-        builtins_eval = builtins.eval
+        if self.directive == '%stream':
 
-        for item in stream:
-            yield builtins_eval(expr, scope, {variable: item})
+            # This method can receive any object, but convert it to an iterator
+            # to provide consistency before passing to the expression.
+            stream = (i for i in stream)
+
+            yield from builtins.eval(
+                self.compiled_expression,
+                self.scope,
+                {self.stream_variable: stream}
+            )
+
+        elif self.directive == '%eval':
+            for item in stream:
+                yield builtins.eval(
+                    self.expression,
+                    self.scope,
+                    {self.variable: item}
+                )
+
+        else:  # pragma no cover
+            raise RuntimeError(f'invalid directive: {self.directive}')
 
 
 class OpFilter(OpBaseEval, directives=('%filter', '%filterfalse')):
@@ -659,27 +673,6 @@ class OpJSON(OpBase, directives=('%json', )):
             func = json.JSONEncoder().encode
 
         return map(func, stream)
-
-
-class OpStream(OpBaseEval, directives=('%stream', )):
-
-    """Evaluate an expression on the stream itself.
-
-    Scope provides access to the entire stream via ``stream_variable`` instead
-    of individual items from the stream.
-    """
-
-    def __call__(self, stream):
-
-        # This method can receive any object, but convert it to an iterator
-        # to provide consistency before passing to the expression.
-        stream = (i for i in stream)
-
-        return builtins.eval(
-            self.compiled_expression,
-            self.scope,
-            {self.stream_variable: stream}
-        )
 
 
 class OpCSVDict(OpBase, directives=('%csvd', )):
