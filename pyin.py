@@ -508,9 +508,12 @@ class OpBaseEval(OpBase, directives=None):
         self.stream_variable = stream_variable
         self.scope = scope
 
+    def compiled_expression(self, mode):
+
+        """Compile a Python expression using the builtin ``compile()``."""
+
         try:
-            self.compiled_expression = builtins.compile(
-                self.expression, '<string>', 'eval')
+            return builtins.compile(self.expression, '<string>', mode)
         except SyntaxError as e:
             raise SyntaxError(
                 f"expression {repr(self.expression)} contains a syntax error:"
@@ -518,7 +521,7 @@ class OpBaseEval(OpBase, directives=None):
             )
 
 
-class OpEval(OpBaseEval, directives=('%eval', '%stream')):
+class OpEval(OpBaseEval, directives=('%eval', '%stream', '%exec')):
 
     """Evaluate a Python expression with Python's ``eval()``.
 
@@ -546,6 +549,16 @@ class OpEval(OpBaseEval, directives=('%eval', '%stream')):
 
     def __call__(self, stream):
 
+        # Compile the expression before doing anything else. If 'stream' is
+        # empty then some of the code below doesn't execute. Unfortunately
+        # this can only happen at runtime since this operation handles both
+        # 'exec()' and 'eval()'.
+        if self.directive == '%exec':
+            mode = 'exec'
+        else:
+            mode = 'eval'
+        compiled_expression = self.compiled_expression(mode)
+
         if self.directive == '%stream':
 
             # This method can receive any object, but convert it to an iterator
@@ -553,18 +566,43 @@ class OpEval(OpBaseEval, directives=('%eval', '%stream')):
             stream = (i for i in stream)
 
             yield from builtins.eval(
-                self.compiled_expression,
+                compiled_expression,
                 self.scope,
                 {self.stream_variable: stream}
             )
 
         elif self.directive == '%eval':
+
             for item in stream:
                 yield builtins.eval(
-                    self.expression,
+                    compiled_expression,
                     self.scope,
                     {self.variable: item}
                 )
+
+        elif self.directive == '%exec':
+
+            # Unlike 'eval()', 'exec()' executes statements, meaning that it
+            # updates the scope in place. The current item must be extracted
+            # from the scope after calling 'exec()'. BUT! It is possible for
+            # 'exec()' to delete the variable, so we cannot assume it
+            # exists in the local scope later. Possibly supporting this
+            # behavior is bad, and we should instead produce an error if this
+            # happens.
+
+            local_scope = {}
+            for item in stream:
+
+                local_scope[self.variable] = item
+                builtins.exec(
+                    compiled_expression,
+                    self.scope,
+                    local_scope
+                )
+
+                # It is possible to 'del variable'!
+                if self.variable in local_scope:
+                    yield local_scope[self.variable]
 
         else:  # pragma no cover
             raise RuntimeError(f'invalid directive: {self.directive}')
@@ -609,7 +647,7 @@ class OpFilter(OpBaseEval, directives=('%filter', '%filterfalse')):
 
             selection = (
                 builtins.eval(
-                    self.compiled_expression,
+                    self.compiled_expression('eval'),
                     self.scope,
                     {self.variable: item}
                 )
@@ -1094,6 +1132,8 @@ def main(
         scope = importer(setup, _DEFAULT_SCOPE.copy())
         local_scope = {}
 
+        # Probably possible to use 'OpEval(%exec)' here, but not immediately
+        # clear how to manifest the scope changes.
         for statement in setup:
             try:
                 code = builtins.compile(statement, '<string>', 'exec')

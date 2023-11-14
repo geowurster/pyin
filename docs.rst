@@ -634,6 +634,15 @@ assumes that any expression not associated with a ``directive`` belongs to
   'i + 1'
   %eval 'i + 1'
 
+``%exec``
+^^^^^^^^^
+
+::
+
+  %exec <statement>
+
+Execute a Python statement instead of an expression.
+
 ``%stream``
 ^^^^^^^^^^^
 
