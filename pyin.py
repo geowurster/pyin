@@ -556,7 +556,7 @@ class OpEval(OpBaseEval, directives=('%eval', )):
             yield builtins_eval(expr, scope, {variable: item})
 
 
-class OpFilter(OpEval, directives=('%filter', '%filterfalse')):
+class OpFilter(OpBaseEval, directives=('%filter', '%filterfalse')):
 
     """Filter data based on a Python expression.
 
@@ -590,8 +590,17 @@ class OpFilter(OpEval, directives=('%filter', '%filterfalse')):
         # which is extremely hard to structure. Instead, just rely on Python's
         # 'truthy' checks.
         elif self.directive in ('%filter', '%filterfalse'):
+
             stream, selection = it.tee(stream, 2)
-            selection = super().__call__(selection)
+
+            selection = (
+                builtins.eval(
+                    self.compiled_expression,
+                    self.scope,
+                    {self.variable: item}
+                )
+                for item in selection
+            )
             if self.directive == '%filterfalse':
                 selection = (not s for s in selection)
 
@@ -652,7 +661,7 @@ class OpJSON(OpBase, directives=('%json', )):
         return map(func, stream)
 
 
-class OpStream(OpEval, directives=('%stream', )):
+class OpStream(OpBaseEval, directives=('%stream', )):
 
     """Evaluate an expression on the stream itself.
 
@@ -660,35 +669,17 @@ class OpStream(OpEval, directives=('%stream', )):
     of individual items from the stream.
     """
 
-    def __init__(self, directive: str, expression: str, /, **kwargs):
-
-        """See parent implementation.
-
-        This operation can only operate on the stream, so it places
-        ``stream_variable`` in ``variable``, and sets the former to ``None``
-        since it is irrelevant.
-
-        :param str directive:
-            See parent implementation.
-        :param str expression:
-            Evaluate this expression.
-        :param **kwargs kwargs:
-            For parent ``__init__()`` method.
-        """
-
-        super().__init__(directive, expression, **kwargs)
-        self.variable = self.stream_variable
-        self.stream_variable = None
-
     def __call__(self, stream):
 
         # This method can receive any object, but convert it to an iterator
         # to provide consistency before passing to the expression.
         stream = (i for i in stream)
 
-        # Use the parent implementation and a bit of trickery to instead
-        # operate on the stream itself.
-        return next(super().__call__([stream]), [])
+        return builtins.eval(
+            self.compiled_expression,
+            self.scope,
+            {self.stream_variable: stream}
+        )
 
 
 class OpCSVDict(OpBase, directives=('%csvd', )):
