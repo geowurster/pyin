@@ -62,7 +62,6 @@ import importlib
 from io import StringIO
 import textwrap
 from types import MethodType
-from typing import Callable, Union
 from unittest import mock
 
 import pytest
@@ -150,10 +149,10 @@ class PyinCliRunner:
     @classmethod
     def invoke(
             cls,
-            func: Callable,
-            rawargs: list,
+            func,
+            rawargs,
             *,
-            input: Union[str, None] = None
+            input=None
     ):
 
         """Execute a command and return the result.
