@@ -18,16 +18,22 @@ import pyin
 from pyin import _cli_entrypoint
 
 
-def test_single_expr(runner, csv_with_header_content):
+def test_single_expr(runner, csv_with_header):
     result = runner.invoke(_cli_entrypoint, [
         "i.upper()"
-    ], input=csv_with_header_content)
+    ], input=csv_with_header)
     assert result.exit_code == 0
     assert not result.err
-    assert result.output.strip() == csv_with_header_content.upper().strip()
+    assert result.output.strip() == csv_with_header.upper().strip()
 
 
-def test_multiple_expr(runner, path_csv_with_header):
+def test_multiple_expr(runner, csv_with_header, tmp_path):
+
+    csv_path = tmp_path / "test_multiple_expr.csv"
+
+    with open(csv_path, 'w') as f:
+        f.write(csv_with_header)
+
     expected = os.linesep.join((
         '"FIELD1","FIELD2","FIELD3"',
         "['l2f1,l2f2,l2f3']",
@@ -35,7 +41,7 @@ def test_multiple_expr(runner, path_csv_with_header):
         '"l4f1","l4f2","l4f3"',
         'END'))
     result = runner.invoke(_cli_entrypoint, [
-        '-i', path_csv_with_header,
+        '-i', str(csv_path),
         "i.upper() if 'field' in i else i",
         "%filter", "'l1' not in i",
         "i.replace('\"', '').split() if 'l2' in i else i",
