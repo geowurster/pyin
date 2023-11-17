@@ -163,10 +163,10 @@ def test_Eval_syntax_error():
     assert expr in str(e.value)
 
 
-def test_OpCSVDict(csv_with_header_content):
+def test_OpCSVDict(csv_with_header):
 
     csv_lines = [
-        i.rstrip(os.linesep) for i in csv_with_header_content.splitlines()]
+        i.rstrip(os.linesep) for i in csv_with_header.splitlines()]
 
     row_dicts = list(pyin.eval('%csvd', csv_lines))
     assert row_dicts == list(csv.DictReader(csv_lines))

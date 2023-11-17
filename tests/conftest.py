@@ -60,7 +60,7 @@ and emerged out of the path of least resistance.
 from contextlib import ExitStack, redirect_stderr, redirect_stdout
 import importlib
 from io import StringIO
-import os.path
+import textwrap
 from types import MethodType
 from typing import Callable, Union
 from unittest import mock
@@ -76,14 +76,22 @@ def runner():
 
 
 @pytest.fixture(scope='module')
-def path_csv_with_header():
-    return os.path.join('tests', 'data', 'csv-with-header.csv')
+def csv_with_header():
 
+    """A CSV with a header, and quoted fields."""
 
-@pytest.fixture(scope='module')
-def csv_with_header_content(path_csv_with_header):
-    with open(path_csv_with_header) as f:
-        return f.read()
+    content = textwrap.dedent("""
+        "field1","field2","field3"
+        "l1f1","l1f2","l1f3"
+        "l2f1","l2f2","l2f3"
+        "l3f1","l3f2","l3f3"
+        "l4f1","l4f2","l4f3"
+        "l5f1","l5f2","l5f3"
+    """)
+
+    content = content.strip()
+
+    return content
 
 
 @pytest.fixture(autouse=True)
