@@ -717,11 +717,21 @@ single global scope. Users should not need to interact with this function.
 Base class for implementing an ``operation``. One ``operation`` implements one
 or more ``directives``. See section below on `Implementing an Operation`_.
 
+``pyin.OpBaseExpression()``
+---------------------------
+
+Like `pyin.OpBase()`_, but for an operation that is instantiated with
+additional information. These classes receive a global ``scope`` intended for
+use with Python's builtin ``eval()`` and ``exec()`` functions, and variable
+names in which data should be placed when evaluating an expression.
+
+
 Implementing an Operation
 =========================
 
 An ``operation`` is a single class containing the code implementing one or more
 ``directives``. Each ``operation`` class can implement multiple ``directives``.
+Admittedly, the term ``operation`` doesn't make much sense, but here we are.
 
 In theory this is pluggable...
 

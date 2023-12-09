@@ -186,10 +186,11 @@ def compile(
 
             args.append(param.annotation(tokens.pop(0)))
 
-        # 'OpBaseEval()' is special in that it receives as scope for Python's
-        # builtin 'eval()', and associated variables.
+        # 'OpBaseExpression()' is special in that it receives scope information
+        # for Python's builtin 'eval()' and 'exec()' functions, and associated
+        # variables.
         kwargs = {}
-        if issubclass(cls, OpBaseEval):
+        if issubclass(cls, OpBaseExpression):
             kwargs.update(
                 variable=variable,
                 scope=scope,
@@ -476,9 +477,12 @@ class OpBase(abc.ABC):
         raise NotImplementedError  # pragma no cover
 
 
-class OpBaseEval(OpBase, directives=None):
+class OpBaseExpression(OpBase, directives=None):
 
-    """Base class for operations using Python's builtin ``eval()``."""
+    """Base class for operations evaluating an expression.
+
+    Typically by ``eval()`` or ``exec()``.
+    """
 
     def __init__(
             self,
@@ -522,7 +526,7 @@ class OpBaseEval(OpBase, directives=None):
             )
 
 
-class OpEval(OpBaseEval, directives=('%eval', '%stream', '%exec')):
+class OpEval(OpBaseExpression, directives=('%eval', '%stream', '%exec')):
 
     """Evaluate a Python expression with Python's ``eval()``.
 
@@ -609,7 +613,7 @@ class OpEval(OpBaseEval, directives=('%eval', '%stream', '%exec')):
             raise RuntimeError(f'invalid directive: {self.directive}')
 
 
-class OpFilter(OpBaseEval, directives=('%filter', '%filterfalse')):
+class OpFilter(OpBaseExpression, directives=('%filter', '%filterfalse')):
 
     """Filter data based on a Python expression.
 
