@@ -1,0 +1,52 @@
+name: Tests
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+
+  test:
+
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+
+    steps:
+
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+
+    - name: Install dependencies
+      shell: bash
+      run: |
+        python3 -m pip install --upgrade pip setuptools wheel
+        python3 -m pip install ".[test]"
+        # Be sure to actually test the package, not the local 'pyin.py' file.
+        rm pyin.py
+
+    - name: Report environment information
+      shell: bash
+      run: |
+        python3 --version
+        python3 -m pip --version
+        python3 -m pip show pip setuptools wheel pyin
+        python3 -m pyin --version
+        python3 -c "import pyin; print(pyin.__version__)"
+
+    - name: Run tests
+      shell: bash
+      run: |
+        python3 -W error -m pytest \
+          --cov pyin \
+          --cov-report term-missing \
+          --cov-fail-under 100
