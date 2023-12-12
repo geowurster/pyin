@@ -69,6 +69,15 @@ _DEFAULT_SCOPE = {
 }
 
 
+class DirectiveError(RuntimeError):
+
+    """Indicates a directive is invalid."""
+
+    def __init__(self, directive):
+        self.directive = directive
+        super().__init__(f"invalid directive: {self.directive}")
+
+
 def _normalize_expressions(f):
 
     """Ensure functions can receive single or multiple expressions.
@@ -382,7 +391,7 @@ class OpBase(abc.ABC):
         self.directive = directive
 
         if self.directive not in self.directives:
-            raise ValueError(
+            raise RuntimeError(
                 f"instantiated '{repr(self)}' with directive"
                 f" '{self.directive}' but supports:"
                 f" {' '.join(self.directives)}"
@@ -610,7 +619,7 @@ class OpEval(OpBaseExpression, directives=('%eval', '%stream', '%exec')):
                     yield local_scope[self.variable]
 
         else:  # pragma no cover
-            raise RuntimeError(f'invalid directive: {self.directive}')
+            raise DirectiveError(self.directive)
 
 
 class OpFilter(OpBaseExpression, directives=('%filter', '%filterfalse')):
@@ -663,9 +672,8 @@ class OpFilter(OpBaseExpression, directives=('%filter', '%filterfalse')):
 
             return it.compress(stream, selection)
 
-        else:
-            raise RuntimeError(
-                f"invalid directive: {self.directive}")  # pragma no cover
+        else:  # pragma no cover
+            raise DirectiveError(self.directive)
 
 
 class OpAccumulate(OpBase, directives=('%accumulate', )):
@@ -797,7 +805,7 @@ class OpReversed(OpBase, directives=('%rev', '%revstream')):
                 yield stream.pop()
 
         else:  # pragma no cover
-            raise RuntimeError(f"invalid directive: {self.directive}")
+            raise DirectiveError(self.directive)
 
 
 class OpBatched(OpBase, directives=('%batched', )):

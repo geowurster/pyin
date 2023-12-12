@@ -725,6 +725,14 @@ additional information. These classes receive a global ``scope`` intended for
 use with Python's builtin ``eval()`` and ``exec()`` functions, and variable
 names in which data should be placed when evaluating an expression.
 
+``pyin.DirectiveError()``
+-------------------------
+
+Indicates a directive is invalid or unusable in some manner. Subclasses
+``RuntimeError()`` to trigger some of the special traceback handling in
+``$ pyin``. Typically this exception should only be raised when something is
+systematically wrong with how ``pyin`` was developed, not incorrect use.
+
 
 Implementing an Operation
 =========================
