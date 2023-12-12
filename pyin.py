@@ -2,21 +2,22 @@
 
 
 import abc
-from collections.abc import Iterable
 import argparse
-import builtins
 from collections import deque
+from collections.abc import Iterable
+import builtins
 import csv
 import functools
 import importlib.util
 import inspect
+import io
 import itertools as it
 import json
-import sys
-import signal
 import operator as op
 import os
 import re
+import signal
+import sys
 import traceback
 
 
@@ -1245,6 +1246,18 @@ def _cli_entrypoint(rawargs=None):
     except Exception as e:
         print("ERROR:", str(e), file=sys.stderr)
         exit_code = 1
+
+    # If the input and/or file points to a file descriptor and is not 'stdin',
+    # close it. Avoids a Python warning about an unclosed resource.
+    for attr in ('infile', 'outfile'):
+        f = getattr(args, attr)
+        try:
+            fileno = getattr(f, 'fileno', lambda: None)()
+        except io.UnsupportedOperation:
+            continue
+
+        if fileno not in (None, 0, 1, 2):
+            f.close()
 
     exit(exit_code)
 

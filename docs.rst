@@ -689,22 +689,10 @@ is equivalent to:
 
 Entrypoint to the CLI for use within Python. Does not catch all exceptions.
 A compliant argument parser is available via the ``argparse_parser()``
-function.
-
-.. code::
-
-    >>> import pyin
-    >>> parser = pyin.argparse_parser()
-    >>> args = parser.parse_args(['--gen', 'range(3)', 'i + 1'])
-    >>> assert pyin.main(**vars(args)) == 0
-    1
-    2
-    3
-
-While not part of the official API, the ``_cli_entrypoint()`` function may be
-worth referencing. It contains an additional layer of error handling for the
-``$ pyin`` utility and exists to bridge the gap between the shell and
-``main()``.
+function. While not part of the official API, the ``_cli_entrypoint()``
+function may be worth referencing. It contains an additional layer of error
+handling for the ``$ pyin`` utility and exists to bridge the gap between the
+shell and ``main()``.
 
 ``pyin.argparse_parser()``
 --------------------------

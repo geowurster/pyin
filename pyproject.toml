@@ -53,5 +53,8 @@ legacy_tox_ini = """
     deps =
         .[test]
     commands =
-        pytest --cov pyin --cov-report term-missing --cov-fail-under 100
+        python3 -W error -m pytest \
+          --cov pyin \
+          --cov-report term-missing \
+          --cov-fail-under 100
 """

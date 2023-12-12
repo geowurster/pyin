@@ -164,27 +164,29 @@ def test_KeyboardInterrupt():
     # into a thread where '_cli_entrypoint()' is running. It probably is
     # possible with some awful hackery though.
 
-    _, stdin = pty.openpty()
+    _, fd = pty.openpty()
 
     proc = subprocess.Popen(
         ['pyin', '--gen', 'range(10)', '(time.sleep(0.5), i)[1]'],
-        stdin=stdin,
+        stdin=fd,
         stderr=subprocess.PIPE,
         stdout=subprocess.PIPE
     )
 
-    # Sleep long enough for things to hit the main loop, otherwise we may
-    # kill the process before it enters the right context.
-    time.sleep(0.5)
+    with proc as proc:
 
-    # Send SIGINT into the process.
-    proc.send_signal(signal.SIGINT)
+        # Sleep long enough for things to hit the main loop, otherwise we may
+        # kill the process before it enters the right context.
+        time.sleep(0.5)
 
-    # Wait for it to shut down, which should not take long at all.
-    proc.wait(1)
+        # Send SIGINT into the process.
+        proc.send_signal(signal.SIGINT)
 
-    assert proc.returncode == 130
-    assert not proc.stderr.read()
+        # Wait for it to shut down, which should not take long at all.
+        proc.wait(1)
+
+        assert proc.returncode == 130
+        assert not proc.stderr.read()
 
 
 def test_main_sys_path(runner):
