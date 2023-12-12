@@ -634,6 +634,19 @@ assumes that any expression not associated with a ``directive`` belongs to
   'i + 1'
   %eval 'i + 1'
 
+``%evalif``
+^^^^^^^^^^^
+
+::
+
+  %evalif <sentinel expression> <expression>
+
+Only evaluate ``expression`` if the ``sentinel expression`` evaulates as true.
+
+::
+
+  %evalif 'i % 2 == 0' 'i ** 2'
+
 ``%exec``
 ^^^^^^^^^
 
@@ -642,6 +655,20 @@ assumes that any expression not associated with a ``directive`` belongs to
   %exec <statement>
 
 Execute a Python statement instead of an expression.
+
+``%execif``
+^^^^^^^^^^^
+
+::
+
+  %execif <sentinel expression> <statement>
+
+Like ``%evalif``, but only execute ``statement`` if ``sentinel expression``
+evaluates as true.
+
+::
+
+  %execif 'i % 2 != 0' 'i -= 2'
 
 ``%stream``
 ^^^^^^^^^^^

@@ -622,6 +622,84 @@ class OpEval(OpBaseExpression, directives=('%eval', '%stream', '%exec')):
             raise DirectiveError(self.directive)
 
 
+class OpEvalIf(OpBaseExpression, directives=('%evalif', '%execif')):
+
+    """Like ``OpEval()``, but for optionally executing an expression.
+
+    Does not filter. If the sentinel expression evaluates as ``False``, the
+    item is emitted without evaluating the expression.
+    """
+
+    def __init__(
+            self,
+            directive: str,
+            sentinel_expression: str,
+            expression: str,
+            /,
+            variable,
+            stream_variable,
+            scope
+    ):
+
+        """See base class for most parameters.
+
+        :param str sentinel_expression:
+            Determines if ``expression`` should be evaluated.
+        """
+
+        super().__init__(
+            directive,
+            expression,
+            variable=variable,
+            stream_variable=stream_variable,
+            scope=scope
+        )
+
+        self.sentinel_expression = sentinel_expression
+
+    def __call__(self, stream):
+
+        selection, stream = it.tee(stream, 2)
+
+        selector = OpEval(
+            '%eval',
+            self.sentinel_expression,
+            variable=self.variable,
+            stream_variable=self.stream_variable,
+            scope=self.scope
+        )
+
+        evaluator = OpEval(
+            self.directive[:-2],
+            self.expression,
+            variable=self.variable,
+            stream_variable=self.stream_variable,
+            scope=self.scope
+        )
+
+        selection = selector(selection)
+        evaluated = evaluator(stream)
+
+        for sentinel in selection:
+            if sentinel:
+                yield next(evaluated)
+            else:
+                yield next(stream)
+
+        # Ensure both iterators were fully exhausted. If not, something is
+        # wrong.
+        hint_data = {
+            'selection': selection,
+            'evaluated': evaluated
+        }
+        for hint, data in hint_data.items():
+            try:
+                next(data)
+                raise RuntimeError(f'failed to exhaust: {hint}')  # pragma no cover
+            except StopIteration:
+                pass
+
+
 class OpFilter(OpBaseExpression, directives=('%filter', '%filterfalse')):
 
     """Filter data based on a Python expression.

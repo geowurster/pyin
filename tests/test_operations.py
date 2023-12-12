@@ -126,7 +126,11 @@ def test_simple_item_args(directive, args, data, expected):
     ('%islice', ('0', ), range(3), []),
     ('%islice', ('1', ), range(3), [0]),
     ('%exec', ('del i', ), range(3), []),
-    ('%exec', ('if i == 1: del i', ), range(3), [0, 2])
+    ('%exec', ('if i == 1: del i', ), range(3), [0, 2]),
+
+    # Two arguments
+    ('%evalif', ('i % 2 == 0', 'i ** 2'), range(4), [0, 1, 4, 3]),
+    ('%execif', ('i % 2 == 1', 'i -= 2'), range(4), [0, -1, 2, 1]),
 
 ])
 def test_simple_stream(directive, args, stream, expected):
