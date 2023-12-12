@@ -46,7 +46,7 @@ jobs:
     - name: Run tests
       shell: bash
       run: |
-        python3 -W error -m pytest \
+        python3 -m pytest \
           --cov pyin \
           --cov-report term-missing \
           --cov-fail-under 100

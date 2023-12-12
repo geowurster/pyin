@@ -634,6 +634,19 @@ assumes that any expression not associated with a ``directive`` belongs to
   'i + 1'
   %eval 'i + 1'
 
+``%evalif``
+^^^^^^^^^^^
+
+::
+
+  %evalif <sentinel expression> <expression>
+
+Only evaluate ``expression`` if the ``sentinel expression`` evaulates as true.
+
+::
+
+  %evalif 'i % 2 == 0' 'i ** 2'
+
 ``%exec``
 ^^^^^^^^^
 
@@ -642,6 +655,20 @@ assumes that any expression not associated with a ``directive`` belongs to
   %exec <statement>
 
 Execute a Python statement instead of an expression.
+
+``%execif``
+^^^^^^^^^^^
+
+::
+
+  %execif <sentinel expression> <statement>
+
+Like ``%evalif``, but only execute ``statement`` if ``sentinel expression``
+evaluates as true.
+
+::
+
+  %execif 'i % 2 != 0' 'i -= 2'
 
 ``%stream``
 ^^^^^^^^^^^
@@ -717,11 +744,29 @@ single global scope. Users should not need to interact with this function.
 Base class for implementing an ``operation``. One ``operation`` implements one
 or more ``directives``. See section below on `Implementing an Operation`_.
 
+``pyin.OpBaseExpression()``
+---------------------------
+
+Like `pyin.OpBase()`_, but for an operation that is instantiated with
+additional information. These classes receive a global ``scope`` intended for
+use with Python's builtin ``eval()`` and ``exec()`` functions, and variable
+names in which data should be placed when evaluating an expression.
+
+``pyin.DirectiveError()``
+-------------------------
+
+Indicates a directive is invalid or unusable in some manner. Subclasses
+``RuntimeError()`` to trigger some of the special traceback handling in
+``$ pyin``. Typically this exception should only be raised when something is
+systematically wrong with how ``pyin`` was developed, not incorrect use.
+
+
 Implementing an Operation
 =========================
 
 An ``operation`` is a single class containing the code implementing one or more
 ``directives``. Each ``operation`` class can implement multiple ``directives``.
+Admittedly, the term ``operation`` doesn't make much sense, but here we are.
 
 In theory this is pluggable...
 

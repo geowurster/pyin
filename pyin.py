@@ -69,6 +69,15 @@ _DEFAULT_SCOPE = {
 }
 
 
+class DirectiveError(RuntimeError):
+
+    """Indicates a directive is invalid."""
+
+    def __init__(self, directive):
+        self.directive = directive
+        super().__init__(f"invalid directive: {self.directive}")
+
+
 def _normalize_expressions(f):
 
     """Ensure functions can receive single or multiple expressions.
@@ -186,10 +195,11 @@ def compile(
 
             args.append(param.annotation(tokens.pop(0)))
 
-        # 'OpBaseEval()' is special in that it receives as scope for Python's
-        # builtin 'eval()', and associated variables.
+        # 'OpBaseExpression()' is special in that it receives scope information
+        # for Python's builtin 'eval()' and 'exec()' functions, and associated
+        # variables.
         kwargs = {}
-        if issubclass(cls, OpBaseEval):
+        if issubclass(cls, OpBaseExpression):
             kwargs.update(
                 variable=variable,
                 scope=scope,
@@ -381,7 +391,7 @@ class OpBase(abc.ABC):
         self.directive = directive
 
         if self.directive not in self.directives:
-            raise ValueError(
+            raise RuntimeError(
                 f"instantiated '{repr(self)}' with directive"
                 f" '{self.directive}' but supports:"
                 f" {' '.join(self.directives)}"
@@ -476,9 +486,12 @@ class OpBase(abc.ABC):
         raise NotImplementedError  # pragma no cover
 
 
-class OpBaseEval(OpBase, directives=None):
+class OpBaseExpression(OpBase, directives=None):
 
-    """Base class for operations using Python's builtin ``eval()``."""
+    """Base class for operations evaluating an expression.
+
+    Typically by ``eval()`` or ``exec()``.
+    """
 
     def __init__(
             self,
@@ -522,7 +535,7 @@ class OpBaseEval(OpBase, directives=None):
             )
 
 
-class OpEval(OpBaseEval, directives=('%eval', '%stream', '%exec')):
+class OpEval(OpBaseExpression, directives=('%eval', '%stream', '%exec')):
 
     """Evaluate a Python expression with Python's ``eval()``.
 
@@ -606,10 +619,88 @@ class OpEval(OpBaseEval, directives=('%eval', '%stream', '%exec')):
                     yield local_scope[self.variable]
 
         else:  # pragma no cover
-            raise RuntimeError(f'invalid directive: {self.directive}')
+            raise DirectiveError(self.directive)
 
 
-class OpFilter(OpBaseEval, directives=('%filter', '%filterfalse')):
+class OpEvalIf(OpBaseExpression, directives=('%evalif', '%execif')):
+
+    """Like ``OpEval()``, but for optionally executing an expression.
+
+    Does not filter. If the sentinel expression evaluates as ``False``, the
+    item is emitted without evaluating the expression.
+    """
+
+    def __init__(
+            self,
+            directive: str,
+            sentinel_expression: str,
+            expression: str,
+            /,
+            variable,
+            stream_variable,
+            scope
+    ):
+
+        """See base class for most parameters.
+
+        :param str sentinel_expression:
+            Determines if ``expression`` should be evaluated.
+        """
+
+        super().__init__(
+            directive,
+            expression,
+            variable=variable,
+            stream_variable=stream_variable,
+            scope=scope
+        )
+
+        self.sentinel_expression = sentinel_expression
+
+    def __call__(self, stream):
+
+        selection, stream = it.tee(stream, 2)
+
+        selector = OpEval(
+            '%eval',
+            self.sentinel_expression,
+            variable=self.variable,
+            stream_variable=self.stream_variable,
+            scope=self.scope
+        )
+
+        evaluator = OpEval(
+            self.directive[:-2],
+            self.expression,
+            variable=self.variable,
+            stream_variable=self.stream_variable,
+            scope=self.scope
+        )
+
+        selection = selector(selection)
+        evaluated = evaluator(stream)
+
+        for sentinel in selection:
+            if sentinel:
+                yield next(evaluated)
+            else:
+                yield next(stream)
+
+        # Ensure both iterators were fully exhausted. If not, something is
+        # wrong.
+        hint_data = {
+            'selection': selection,
+            'evaluated': evaluated
+        }
+        for hint, data in hint_data.items():
+            try:
+                next(data)
+                raise RuntimeError(f'failed to exhaust: {hint}')  # pragma no cover
+            except StopIteration:
+                pass
+
+
+class OpFilter(OpBaseExpression, directives=('%filter', '%filterfalse')):
 
     """Filter data based on a Python expression.
 
@@ -659,9 +750,8 @@ class OpFilter(OpBaseEval, directives=('%filter', '%filterfalse')):
 
             return it.compress(stream, selection)
 
-        else:
-            raise RuntimeError(
-                f"invalid directive: {self.directive}")  # pragma no cover
+        else:  # pragma no cover
+            raise DirectiveError(self.directive)
 
 
 class OpAccumulate(OpBase, directives=('%accumulate', )):
@@ -793,7 +883,7 @@ class OpReversed(OpBase, directives=('%rev', '%revstream')):
                 yield stream.pop()
 
         else:  # pragma no cover
-            raise RuntimeError(f"invalid directive: {self.directive}")
+            raise DirectiveError(self.directive)
 
 
 class OpBatched(OpBase, directives=('%batched', )):

@@ -105,7 +105,16 @@ def test_OpBase_init_directive_mismatch():
         def __call__(self, stream):
             raise NotImplementedError
 
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(RuntimeError) as e:
         Op('%mismatch')
 
     assert "with directive '%mismatch' but supports: %dir" in str(e.value)
+
+
+def test_DirectiveError():
+
+    """Ensure ``DirectiveError()``'s message is correct."""
+
+    exc = pyin.DirectiveError('%example')
+
+    assert str(exc) == "invalid directive: %example"

@@ -37,6 +37,9 @@ requires = ["setuptools"]
 minversion = "6.0"
 addopts = "--doctest-modules"
 testpaths = ["docs.rst", "tests/"]
+filterwarnings = [
+    "error"
+]
 
 [tool.setuptools]
 py-modules = ["pyin"]
@@ -53,7 +56,7 @@ legacy_tox_ini = """
     deps =
         .[test]
     commands =
-        python3 -W error -m pytest \
+        pytest \
           --cov pyin \
           --cov-report term-missing \
           --cov-fail-under 100
