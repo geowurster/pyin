@@ -2,10 +2,10 @@
 
 
 import abc
-from collections.abc import Iterable
 import argparse
-import builtins
 from collections import deque
+from collections.abc import Iterable
+import builtins
 import csv
 import functools
 import importlib.util
@@ -13,11 +13,11 @@ import inspect
 import io
 import itertools as it
 import json
-import sys
-import signal
 import operator as op
 import os
 import re
+import signal
+import sys
 import traceback
 
 
