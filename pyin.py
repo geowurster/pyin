@@ -1326,16 +1326,18 @@ def _cli_entrypoint(rawargs=None):
         print()  # Don't get a trailing newline otherwise
         exit_code = 128 + signal.SIGINT
 
-    # A 'RuntimeError()' indicates a problem that should have been caught
-    # during testing. We want a full traceback in these cases.
-    except RuntimeError:  # pragma no cover
-        print(''.join(traceback.format_exc()).rstrip(), file=sys.stderr)
+    except Exception as e:
+
         exit_code = 1
 
-    # Generic error reporting
-    except Exception as e:
-        print("ERROR:", str(e), file=sys.stderr)
-        exit_code = 1
+        # A 'RuntimeError()' indicates a problem that should have been caught
+        # during testing. We want a full traceback in these cases.
+        if 'PYIN_FULL_TB' in os.environ or isinstance(e, RuntimeError):
+            message = ''.join(traceback.format_exc()).rstrip()
+        else:
+            message = f"ERROR: {str(e)}"
+
+        print(message, file=sys.stderr)
 
     # If the input and/or file points to a file descriptor and is not 'stdin',
     # close it. Avoids a Python warning about an unclosed resource.
