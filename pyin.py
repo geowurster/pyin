@@ -26,7 +26,7 @@ __author__ = 'Kevin Wurster'
 __license__ = '''
 New BSD License
 
-Copyright (c) 2015-2023, Kevin D. Wurster
+Copyright (c) 2015-2024, Kevin D. Wurster
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
