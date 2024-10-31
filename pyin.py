@@ -148,17 +148,15 @@ def compile(
     tokens = list(expressions)
     del expressions
 
-    # Check for empty strings in expressions. A check with 'all(tokens)' may
-    # be sufficient, but could be confused by '__bool__()'.
-    if not all(len(t) for t in tokens):
-        raise SyntaxError(
-            f"one or more expression is an empty string:"
-            f" {' '.join(map(repr, tokens))}")
-
     while tokens:
 
         # Get a directive
         directive = tokens.pop(0)
+
+        if directive == '' or directive.isspace():
+            raise SyntaxError(
+                f'expression is white space or empty: {repr(directive)}'
+            )
 
         # If it is not actually a directive just assume it is a Python
         # expression that should be evaluated. Stick the token back in the
@@ -1055,6 +1053,26 @@ def _type_gen(value):
         raise argparse.ArgumentTypeError(
             'cannot combine with piping data to stdin')
 
+    return _type_expression(value)
+
+
+def _type_expression(value):
+
+    """Validate a Python expression argument.
+
+    Not comprehensive. Ultimately compiling the expression to a code object
+    is the only method for ensuring compliance.
+    """
+
+    if value.isspace():
+        raise argparse.ArgumentTypeError(
+            'expression is entirely white space'
+        )
+    elif value == '':
+        raise argparse.ArgumentTypeError(
+            'empty expression'
+        )
+
     return value
 
 
@@ -1108,6 +1126,7 @@ def argparse_parser():
     )
     aparser.add_argument(
         '-s', '--setup', action='append', metavar='EXPR',
+        type=_type_expression,
         help="Execute one or more Python statements to pre-initialize objects,"
              " import objects with new names, etc."
     )
@@ -1131,6 +1150,7 @@ def argparse_parser():
     aparser.add_argument(
         'expressions',
         metavar='EXPR',
+        type=_type_expression,
         nargs='*',
         help='Python expression.'
     )
