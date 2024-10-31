@@ -1102,7 +1102,7 @@ def argparse_parser():
     )
     aparser.add_argument(
         '--linesep',
-        metavar='string',
+        metavar='STR',
         default=os.linesep,
         help=f"Write this after every line. Defaults to: {repr(os.linesep)}."
     )
@@ -1113,7 +1113,7 @@ def argparse_parser():
     )
     aparser.add_argument(
         '--variable',
-        metavar='EXPR',
+        metavar='STR',
         type=_type_variable,
         default=_DEFAULT_VARIABLE,
         help="Place each input item in this variable when evaluating"
