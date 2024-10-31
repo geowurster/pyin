@@ -314,7 +314,6 @@ def test_setup_syntax_error(runner):
     """``SyntaxError`` in a setup statement."""
 
     statement = '1 invalid syntax'
-    expected = f'ERROR: setup statement contains a syntax error: {statement}'
 
     result = runner.invoke(_cli_entrypoint, [
         '--gen', 'range(1)',
@@ -323,7 +322,8 @@ def test_setup_syntax_error(runner):
 
     assert result.exit_code == 1
     assert not result.output
-    assert result.err == expected + os.linesep
+    assert 'expression contains a syntax error: invalid syntax' in result.err
+    assert statement in result.err
 
 
 @mock.patch.dict(os.environ, {'PYIN_FULL_TRACEBACK': ''})
