@@ -50,7 +50,7 @@ license-files = ["LICENSE.txt"]
 legacy_tox_ini = """
     [tox]
     min_version = 4.0
-    env_list = py{38,39,310,311,312}
+    env_list = py{38,39,310,311,312,313}
 
     [testenv]
     deps =
