@@ -1332,7 +1332,7 @@ def _cli_entrypoint(rawargs=None):
 
         # A 'RuntimeError()' indicates a problem that should have been caught
         # during testing. We want a full traceback in these cases.
-        if 'PYIN_FULL_TB' in os.environ or isinstance(e, RuntimeError):
+        if 'PYIN_FULL_TRACEBACK' in os.environ or isinstance(e, RuntimeError):
             message = ''.join(traceback.format_exc()).rstrip()
         else:
             message = f"ERROR: {str(e)}"
