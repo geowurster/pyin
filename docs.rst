@@ -160,7 +160,7 @@ A more complex example mixing directives, expressions, etc.:
         'i[::2]' \
         %stream '[" ".join(i) for i in s]'
     New License
-    Copyright 2015-2023, D.
+    Copyright 2015-2024, D.
     All reserved.
 
 is equivalent to the Python code:
@@ -180,7 +180,7 @@ is equivalent to the Python code:
     ...         i = i[::2]
     ...         print(" ".join(i))
     New License
-    Copyright 2015-2023, D.
+    Copyright 2015-2024, D.
     All reserved.
 
 Scope
@@ -206,6 +206,19 @@ but can be investigated:
 
 This is admittedly very hard to read, but rebuilding the command one expression
 at a time should reveal what is happening.
+
+Environment Variables
+---------------------
+
+``PYIN_FULL_TRACEBACK``
+^^^^^^^^^^^^^^^^^^^^^^^
+
+``$ pyin`` carefully manages how exceptions are raised and presented to the
+user to differentiate between problems with expressions, and problems with
+``$ pyin`` itself. In some cases it is helpful to get a full traceback.
+
+The presence of this variable in the environment enables the feature regardless
+of its value.
 
 Directives
 ==========

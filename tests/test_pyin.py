@@ -11,6 +11,7 @@ import subprocess
 import sys
 import textwrap
 import time
+from unittest import mock
 
 import pytest
 
@@ -313,7 +314,6 @@ def test_setup_syntax_error(runner):
     """``SyntaxError`` in a setup statement."""
 
     statement = '1 invalid syntax'
-    expected = f'ERROR: setup statement contains a syntax error: {statement}'
 
     result = runner.invoke(_cli_entrypoint, [
         '--gen', 'range(1)',
@@ -322,4 +322,52 @@ def test_setup_syntax_error(runner):
 
     assert result.exit_code == 1
     assert not result.output
-    assert result.err == expected + os.linesep
+    assert 'expression contains a syntax error: invalid syntax' in result.err
+    assert statement in result.err
+
+
+@mock.patch.dict(os.environ, {'PYIN_FULL_TRACEBACK': ''})
+def test_PYIN_FULL_TRACEBACK(runner):
+
+    """Test the ``PYIN_FULL_TRACEBACK`` environment variable."""
+
+    result = runner.invoke(_cli_entrypoint, [
+        '--gen', 'range(3)',
+        'i + "TypeError"'
+    ])
+
+    assert result.exit_code == 1
+    assert not result.output
+    assert len(result.err.splitlines()) > 10
+    assert 'supported operand' in result.err
+
+
+@pytest.mark.parametrize('expr, message', [
+    ('', '{tag}: empty expression'),
+    (' ', '{tag}: expression is entirely white space')
+])
+def test_expressions_white_space(expr, message, runner):
+
+    """Ensure empty expressions cannot be passed to ``$ pyin``."""
+
+    ###########################################################################
+    # Test expressions
+
+    result = runner.invoke(_cli_entrypoint, [
+        '--gen', 'range(3)', expr, 'i'
+    ])
+
+    assert result.exit_code == 2
+    assert not result.output
+    assert message.format(tag='EXPR') in result.err
+
+    ###########################################################################
+    # Test --gen expressions
+
+    result = runner.invoke(_cli_entrypoint, [
+        '--gen', expr
+    ])
+
+    assert result.exit_code == 2
+    assert not result.output
+    assert message.format(tag='--gen') in result.err

@@ -150,7 +150,7 @@ def test_simple_stream(directive, args, stream, expected):
     assert list(pyin.eval(expressions, [])) == []
 
 
-def test_Eval_syntax_error():
+def test_eval_syntax_error():
 
     """Produce a helpful error when encountering :obj:`SyntaxError`.
 
@@ -163,8 +163,8 @@ def test_Eval_syntax_error():
     with pytest.raises(SyntaxError) as e:
         list(pyin.eval(expr, range(1)))
 
-    assert 'contains a syntax error' in str(e.value)
-    assert expr in str(e.value)
+    assert 'invalid syntax' in str(e.value)
+    assert expr == e.value.text
 
 
 def test_OpCSVDict(csv_with_header):

@@ -26,7 +26,7 @@ __author__ = 'Kevin Wurster'
 __license__ = '''
 New BSD License
 
-Copyright (c) 2015-2023, Kevin D. Wurster
+Copyright (c) 2015-2024, Kevin D. Wurster
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -148,17 +148,15 @@ def compile(
     tokens = list(expressions)
     del expressions
 
-    # Check for empty strings in expressions. A check with 'all(tokens)' may
-    # be sufficient, but could be confused by '__bool__()'.
-    if not all(len(t) for t in tokens):
-        raise SyntaxError(
-            f"one or more expression is an empty string:"
-            f" {' '.join(map(repr, tokens))}")
-
     while tokens:
 
         # Get a directive
         directive = tokens.pop(0)
+
+        if directive == '' or directive.isspace():
+            raise SyntaxError(
+                f'expression is white space or empty: {repr(directive)}'
+            )
 
         # If it is not actually a directive just assume it is a Python
         # expression that should be evaluated. Stick the token back in the
@@ -526,13 +524,7 @@ class OpBaseExpression(OpBase, directives=None):
 
         """Compile a Python expression using the builtin ``compile()``."""
 
-        try:
-            return builtins.compile(self.expression, '<string>', mode)
-        except SyntaxError as e:
-            raise SyntaxError(
-                f"expression {repr(self.expression)} contains a syntax error:"
-                f" {e.text}"
-            )
+        return builtins.compile(self.expression, '<string>', mode)
 
 
 class OpEval(OpBaseExpression, directives=('%eval', '%stream', '%exec')):
@@ -1055,6 +1047,26 @@ def _type_gen(value):
         raise argparse.ArgumentTypeError(
             'cannot combine with piping data to stdin')
 
+    return _type_expression(value)
+
+
+def _type_expression(value):
+
+    """Validate a Python expression argument.
+
+    Not comprehensive. Ultimately compiling the expression to a code object
+    is the only method for ensuring compliance.
+    """
+
+    if value.isspace():
+        raise argparse.ArgumentTypeError(
+            'expression is entirely white space'
+        )
+    elif value == '':
+        raise argparse.ArgumentTypeError(
+            'empty expression'
+        )
+
     return value
 
 
@@ -1079,7 +1091,7 @@ def argparse_parser():
     input_group = aparser.add_mutually_exclusive_group()
     input_group.add_argument(
         '--gen',
-        metavar='expression',
+        metavar='EXPR',
         dest='generate_expr',
         type=_type_gen,
         help="Execute this Python expression and feed results into other"
@@ -1087,7 +1099,7 @@ def argparse_parser():
     )
     input_group.add_argument(
         '-i', '--infile',
-        metavar='path',
+        metavar='PATH',
         type=argparse.FileType('r'),
         default='-',
         help="Read input from this file. Use '-' for stdin (the default)."
@@ -1095,25 +1107,26 @@ def argparse_parser():
 
     aparser.add_argument(
         '-o', '--outfile',
-        metavar='path',
+        metavar='PATH',
         type=argparse.FileType('w'),
         default='-',
         help="Write to this file. Use '-' for stdout (the default)."
     )
     aparser.add_argument(
         '--linesep',
-        metavar='string',
+        metavar='STR',
         default=os.linesep,
         help=f"Write this after every line. Defaults to: {repr(os.linesep)}."
     )
     aparser.add_argument(
-        '-s', '--setup', action='append',
+        '-s', '--setup', action='append', metavar='EXPR',
+        type=_type_expression,
         help="Execute one or more Python statements to pre-initialize objects,"
              " import objects with new names, etc."
     )
     aparser.add_argument(
         '--variable',
-        metavar='string',
+        metavar='STR',
         type=_type_variable,
         default=_DEFAULT_VARIABLE,
         help="Place each input item in this variable when evaluating"
@@ -1121,7 +1134,7 @@ def argparse_parser():
     )
     aparser.add_argument(
         '--stream-variable',
-        metavar='string',
+        metavar='STR',
         type=_type_variable,
         default=_DEFAULT_STREAM_VARIABLE,
         help="Place the stream in this variable when evaluating expressions"
@@ -1130,7 +1143,8 @@ def argparse_parser():
 
     aparser.add_argument(
         'expressions',
-        metavar='expressions',
+        metavar='EXPR',
+        type=_type_expression,
         nargs='*',
         help='Python expression.'
     )
@@ -1226,14 +1240,8 @@ def main(
         # Probably possible to use 'OpEval(%exec)' here, but not immediately
         # clear how to manifest the scope changes.
         for statement in setup:
-            try:
-                code = builtins.compile(statement, '<string>', 'exec')
-            except SyntaxError as e:
-                raise SyntaxError(
-                    f"setup statement contains a syntax error:"
-                    f" {e.text.strip()}"
-                )
-            exec(code, scope, local_scope)
+            code_object = builtins.compile(statement, '<string>', 'exec')
+            exec(code_object, scope, local_scope)
             scope.update(local_scope)
 
         del local_scope
@@ -1319,6 +1327,20 @@ def _cli_entrypoint(rawargs=None):
     try:
         exit_code = main(**vars(args))
 
+    except SyntaxError as e:
+
+        exit_code = 1
+
+        # Reformat the exception information to provide clarity that this is
+        # something the user did wrong, and not something 'pyin' did wrong.
+        lines = [
+            f'ERROR: expression contains a syntax error: {e.msg}',
+            '',
+            f'    {e.text}',
+            f'    {" " * (e.offset - 1)}^',
+        ]
+        print(os.linesep.join(lines), file=sys.stderr)
+
     # User interrupted with '^C' most likely, but technically this is just
     # a SIGINT. Somehow this shows up in the coverage report generated by
     # '$ pytest --cov'. No idea how that works!!
@@ -1326,16 +1348,18 @@ def _cli_entrypoint(rawargs=None):
         print()  # Don't get a trailing newline otherwise
         exit_code = 128 + signal.SIGINT
 
-    # A 'RuntimeError()' indicates a problem that should have been caught
-    # during testing. We want a full traceback in these cases.
-    except RuntimeError:  # pragma no cover
-        print(''.join(traceback.format_exc()).rstrip(), file=sys.stderr)
+    except Exception as e:
+
         exit_code = 1
 
-    # Generic error reporting
-    except Exception as e:
-        print("ERROR:", str(e), file=sys.stderr)
-        exit_code = 1
+        # A 'RuntimeError()' indicates a problem that should have been caught
+        # during testing. We want a full traceback in these cases.
+        if 'PYIN_FULL_TRACEBACK' in os.environ or isinstance(e, RuntimeError):
+            message = ''.join(traceback.format_exc()).rstrip()
+        else:
+            message = f"ERROR: {str(e)}"
+
+        print(message, file=sys.stderr)
 
     # If the input and/or file points to a file descriptor and is not 'stdin',
     # close it. Avoids a Python warning about an unclosed resource.
