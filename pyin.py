@@ -60,7 +60,6 @@ _DEFAULT_VARIABLE = 'i'
 _DEFAULT_STREAM_VARIABLE = 's'
 _EVAL_DIRECTIVE = '%eval'
 _IMPORTER_REGEX = re.compile(r"([a-zA-Z_.][a-zA-Z0-9_.]*)")
-_DIRECTIVE_REGISTRY = {}
 _DEFAULT_SCOPE = {
     '__builtins__': builtins,
     'it': it,
@@ -370,8 +369,6 @@ class OpBase(abc.ABC):
       builtin ``eval()`` function.
     """
 
-    directives = None
-
     def __init__(
             self,
             directive: str,
@@ -388,26 +385,9 @@ class OpBase(abc.ABC):
 
         self.directive = directive
 
-        if self.directive not in self.directives:
-            raise RuntimeError(
-                f"instantiated '{repr(self)}' with directive"
-                f" '{self.directive}' but supports:"
-                f" {' '.join(self.directives)}"
-            )
+    def __init_subclass__(cls):
 
-    def __init_subclass__(cls, /, directives, **kwargs):
-
-        """Register subclass and its directives.
-
-        Also populates ``Operations.directives`` class variable.
-
-        :param str directives:
-            Directives supported by this class. Like ``('%upper', '%lower')``.
-        :param **kwargs kwargs:
-            Additional arguments.
-        """
-
-        global _DIRECTIVE_REGISTRY
+        """Validate a subclass."""
 
         # First validate subclass
         sig = inspect.signature(cls.__init__)
@@ -433,22 +413,6 @@ class OpBase(abc.ABC):
                     f"argument '{param.name}' for directive"
                     f" '{cls.__name__}.__init__()' must have a type annotation"
                 )
-
-        # Register subclasss
-        super().__init_subclass__(**kwargs)
-        if directives is not None:
-            for d in directives:
-                if d[0] != '%' or d.count('%') != 1:
-                    raise RuntimeError(
-                        f"directive '{d}' for class '{cls.__name__}' is not"
-                        f" prefixed with a single '%'")
-                elif d in _DIRECTIVE_REGISTRY:
-                    raise RuntimeError(
-                        f"directive '{d}' conflict:"
-                        f" {cls} {_DIRECTIVE_REGISTRY[d]}")
-
-                cls.directives = directives
-                _DIRECTIVE_REGISTRY[d] = cls
 
     def __repr__(self):
 
@@ -484,7 +448,7 @@ class OpBase(abc.ABC):
         raise NotImplementedError  # pragma no cover
 
 
-class OpBaseExpression(OpBase, directives=None):
+class OpBaseExpression(OpBase):
 
     """Base class for operations evaluating an expression.
 
@@ -527,7 +491,7 @@ class OpBaseExpression(OpBase, directives=None):
         return builtins.compile(self.expression, '<string>', mode)
 
 
-class OpEval(OpBaseExpression, directives=('%eval', '%stream', '%exec')):
+class OpEval(OpBaseExpression):
 
     """Evaluate a Python expression with Python's ``eval()``.
 
@@ -614,7 +578,7 @@ class OpEval(OpBaseExpression, directives=('%eval', '%stream', '%exec')):
             raise DirectiveError(self.directive)
 
 
-class OpEvalIf(OpBaseExpression, directives=('%evalif', '%execif')):
+class OpEvalIf(OpBaseExpression):
 
     """Like ``OpEval()``, but for optionally executing an expression.
 
@@ -692,7 +656,7 @@ class OpEvalIf(OpBaseExpression, directives=('%evalif', '%execif')):
                 pass
 
 
-class OpFilter(OpBaseExpression, directives=('%filter', '%filterfalse')):
+class OpFilter(OpBaseExpression):
 
     """Filter data based on a Python expression.
 
@@ -746,7 +710,7 @@ class OpFilter(OpBaseExpression, directives=('%filter', '%filterfalse')):
             raise DirectiveError(self.directive)
 
 
-class OpAccumulate(OpBase, directives=('%accumulate', )):
+class OpAccumulate(OpBase):
 
     """Accumulate the entire stream into a single object."""
 
@@ -762,7 +726,7 @@ class OpAccumulate(OpBase, directives=('%accumulate', )):
             yield stream
 
 
-class OpChain(OpBase, directives=('%chain', )):
+class OpChain(OpBase):
 
     """Flatten the stream by one level – like ``itertools.chain()``."""
 
@@ -771,7 +735,7 @@ class OpChain(OpBase, directives=('%chain', )):
         return it.chain.from_iterable(stream)
 
 
-class OpJSON(OpBase, directives=('%json', )):
+class OpJSON(OpBase):
 
     """Serialize/deserialize JSON data.
 
@@ -796,7 +760,7 @@ class OpJSON(OpBase, directives=('%json', )):
         return map(func, stream)
 
 
-class OpCSVDict(OpBase, directives=('%csvd', )):
+class OpCSVDict(OpBase):
 
     """Read/write data via ``csv.DictReader()`` and ``csv.DictWriter()``.
 
@@ -839,7 +803,7 @@ class OpCSVDict(OpBase, directives=('%csvd', )):
                 yield writer.writerow(row)
 
 
-class OpReversed(OpBase, directives=('%rev', '%revstream')):
+class OpReversed(OpBase):
 
     """Reverse item/stream."""
 
@@ -878,7 +842,7 @@ class OpReversed(OpBase, directives=('%rev', '%revstream')):
             raise DirectiveError(self.directive)
 
 
-class OpBatched(OpBase, directives=('%batched', )):
+class OpBatched(OpBase):
 
     """Group stream into chunks with no more than N elements.
 
@@ -908,8 +872,7 @@ class OpBatched(OpBase, directives=('%batched', )):
             yield tuple(chunk)
 
 
-class OpStrNoArgs(OpBase, directives=(
-        '%split', '%lower', '%upper', '%strip', '%lstrip', '%rstrip')):
+class OpStrNoArgs(OpBase):
 
     """Text processing that doesn't require an argument.
 
@@ -921,10 +884,7 @@ class OpStrNoArgs(OpBase, directives=(
         return map(op.methodcaller(self.directive[1:]), stream)
 
 
-class OpStrOneArg(OpBase, directives=(
-        '%join', '%splits',
-        '%partition', '%rpartition',
-        '%strips', '%lstrips', '%rstrips')):
+class OpStrOneArg(OpBase):
 
     # Possibly differentiating between things like '%strip' and '%strips' is
     # too much, and instead we should just have '%strip string'?
@@ -972,7 +932,7 @@ class OpStrOneArg(OpBase, directives=(
             return map(func, stream)
 
 
-class OpReplace(OpBase, directives=('%replace', )):
+class OpReplace(OpBase):
 
     """Replace a portion of a string with a new string."""
 
@@ -999,8 +959,7 @@ class OpReplace(OpBase, directives=('%replace', )):
         return map(op.methodcaller('replace', self.old, self.new), stream)
 
 
-class OpCast(OpBase, directives=(
-        '%bool', '%dict', '%float', '%int', '%list', '%set', '%str', '%tuple')):
+class OpCast(OpBase):
 
     """Cast to a builtin Python type."""
 
@@ -1009,7 +968,7 @@ class OpCast(OpBase, directives=(
         return map(func, stream)
 
 
-class OpISlice(OpBase, directives=('%islice', )):
+class OpISlice(OpBase):
 
     """Take at most the first N items from the stream."""
 
@@ -1019,6 +978,50 @@ class OpISlice(OpBase, directives=('%islice', )):
 
     def __call__(self, stream):
         return it.islice(stream, self.count)
+
+
+###############################################################################
+# Directive Registry
+
+_DIRECTIVE_REGISTRY = {
+    '%accumulate': OpAccumulate,
+    '%batched': OpBatched,
+    '%bool': OpCast,
+    '%chain': OpChain,
+    '%csvd': OpCSVDict,
+    '%dict': OpCast,
+    '%eval': OpEval,
+    '%evalif': OpEvalIf,
+    '%exec': OpEval,
+    '%execif': OpEvalIf,
+    '%filter': OpFilter,
+    '%filterfalse': OpFilter,
+    '%float': OpCast,
+    '%int': OpCast,
+    '%islice': OpISlice,
+    '%join': OpStrOneArg,
+    '%json': OpJSON,
+    '%list': OpCast,
+    '%lower': OpStrNoArgs,
+    '%lstrip': OpStrNoArgs,
+    '%lstrips': OpStrOneArg,
+    '%partition': OpStrOneArg,
+    '%replace': OpReplace,
+    '%rev': OpReversed,
+    '%revstream': OpReversed,
+    '%rpartition': OpStrOneArg,
+    '%rstrip': OpStrNoArgs,
+    '%rstrips': OpStrOneArg,
+    '%set': OpCast,
+    '%split': OpStrNoArgs,
+    '%splits': OpStrOneArg,
+    '%str': OpCast,
+    '%stream': OpEval,
+    '%strip': OpStrNoArgs,
+    '%strips': OpStrOneArg,
+    '%tuple': OpCast,
+    '%upper': OpStrNoArgs,
+}
 
 
 ###############################################################################

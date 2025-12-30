@@ -9,32 +9,13 @@ import pytest
 import pyin
 
 
-def test_directive_registry_conflict():
-
-    """Two operations register the same directive."""
-
-    class Op1(pyin.OpBase, directives=('%dir', )):
-        pass
-
-    with pytest.raises(RuntimeError) as e:
-
-        # The test lives in 'OpBase.__init_subclass__()', so the class
-        # cannot even be defined.
-        class Op2(pyin.OpBase, directives=('%dir', )):
-            pass
-
-    assert "directive '%dir' conflict" in str(e.value)
-    assert 'Op1' in str(e.value)
-    assert 'Op2' in str(e.value)
-
-
 def test_subclass_missing_positional_only_args():
 
     """Subclasses must define positional-only args."""
 
     with pytest.raises(RuntimeError) as e:
 
-        class OpBroken(pyin.OpBase, directives=('%test', )):
+        class OpBroken(pyin.OpBase):
 
             def __init__(self, directive):
                 super().__init__(
@@ -50,7 +31,7 @@ def test_subclass_missing_type_annotation():
 
     with pytest.raises(RuntimeError) as e:
 
-        class OpBroken(pyin.OpBase, directives=('%test',)):
+        class OpBroken(pyin.OpBase):
             def __init__(self, directive, /, **kwargs):
                 super().__init__(directive, **kwargs)
 
@@ -65,7 +46,7 @@ def test_subclass_missing_positional_only_arguments():
 
     with pytest.raises(RuntimeError) as e:
 
-        class OpBroken(pyin.OpBase, directives=('%test', )):
+        class OpBroken(pyin.OpBase):
             def __init__(self, directive, arg, **kwargs):
                 super().__init__(directive, **kwargs)
 
@@ -73,42 +54,16 @@ def test_subclass_missing_positional_only_arguments():
     assert "lacks the positional-only arguments" in str(e.value)
 
 
-@pytest.mark.parametrize('directive', ['test', '%%test'])
-def test_OpBase_subclass_no_prefix(directive):
-
-    with pytest.raises(RuntimeError) as e:
-
-        class OpTest(pyin.OpBase, directives=(directive, )):
-
-            def __init__(self, directive: str, /, **kwargs):
-                super().__init__(directive, **kwargs)
-
-    msg = f"'{directive}' for class 'OpTest' is not prefixed with a single '%'"
-    assert msg in str(e.value)
-
-
 def test_OpBase_repr():
 
     """Check :meth:`OpBase.__repr__()`"""
 
-    class Op(pyin.OpBase, directives=('%dir', )):
+    class Op(pyin.OpBase):
         def __call__(self, stream):
             raise NotImplementedError
 
     o = Op('%dir')
     assert repr(o) == '<Op(%dir, ...)>'
-
-
-def test_OpBase_init_directive_mismatch():
-
-    class Op(pyin.OpBase, directives=('%dir', )):
-        def __call__(self, stream):
-            raise NotImplementedError
-
-    with pytest.raises(RuntimeError) as e:
-        Op('%mismatch')
-
-    assert "with directive '%mismatch' but supports: %dir" in str(e.value)
 
 
 def test_DirectiveError():
