@@ -5,6 +5,7 @@ import abc
 import argparse
 from collections import deque
 from collections.abc import Iterable
+from contextlib import ExitStack
 import builtins
 import csv
 import functools
@@ -1103,7 +1104,6 @@ def argparse_parser():
     input_group.add_argument(
         '-i', '--infile',
         metavar='PATH',
-        type=argparse.FileType('r'),
         default='-',
         help="Read input from this file. Use '-' for stdin (the default)."
     )
@@ -1111,7 +1111,6 @@ def argparse_parser():
     aparser.add_argument(
         '-o', '--outfile',
         metavar='PATH',
-        type=argparse.FileType('w'),
         default='-',
         help="Write to this file. Use '-' for stdout (the default)."
     )
@@ -1325,10 +1324,30 @@ def _cli_entrypoint(rawargs=None):
     :raises SystemExit:
     """
 
-    args = argparse_parser().parse_args(args=rawargs)
+    kwargs = vars(argparse_parser().parse_args(args=rawargs))
 
     try:
-        exit_code = main(**vars(args))
+
+        with ExitStack() as stack:
+
+            infile = kwargs['infile']
+            if infile == '-':
+                infile = sys.stdin
+            else:
+                infile = stack.enter_context(open(infile))
+
+            outfile = kwargs['outfile']
+            if outfile == '-':
+                outfile = sys.stdout
+            else:
+                outfile = stack.enter_context(open(outfile, 'w'))
+
+            kwargs.update(
+                infile=infile,
+                outfile=outfile,
+            )
+
+            exit_code = main(**kwargs)
 
     except SyntaxError as e:
 
