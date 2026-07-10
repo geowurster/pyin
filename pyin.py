@@ -3,15 +3,14 @@
 
 import abc
 import argparse
-from collections import deque
+import builtins
 from collections.abc import Iterable
 from contextlib import ExitStack
-import builtins
 import csv
 import functools
+from functools import partial
 import importlib.util
 import inspect
-import io
 import itertools as it
 import json
 import operator as op
@@ -59,7 +58,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 _DEFAULT_VARIABLE = 'i'
 _DEFAULT_STREAM_VARIABLE = 's'
-_EVAL_DIRECTIVE = '%eval'
 _IMPORTER_REGEX = re.compile(r"([a-zA-Z_.][a-zA-Z0-9_.]*)")
 _DEFAULT_SCOPE = {
     '__builtins__': builtins,
@@ -114,9 +112,9 @@ def compile(
         stream_variable=_DEFAULT_STREAM_VARIABLE,
         scope=None):
 
-    """Compile expressions to operation classes.
+    """Compile expressions to ``pyin`` objects.
 
-    An operation class is a subclass of ``OpBase()``.
+    Each class is a subclass of ``Directive()``.
 
     :param str or sequence expressions:
         One or more expressions to compile.
@@ -132,10 +130,10 @@ def compile(
 
     :return:
         A sequence of compiled operations. An operation is a subclass of
-        ``OpBase()``.
+        ``Directive()``.
     """
 
-    compiled = []
+    tokens = list(expressions)
 
     # Note that 'scope = scope or {}' is different from 'if scope is None'.
     # The latter always creates a new dict if the caller does not pass one,
@@ -145,66 +143,50 @@ def compile(
     if scope is None:
         scope = {}
 
-    tokens = list(expressions)
-    del expressions
-
+    compiled = []
     while tokens:
 
-        # Get a directive
+        if not tokens:
+            raise DirectiveError('parsing error: no tokens remain')  # pragma no cover
+
+        if not tokens[0].startswith('%'):
+            tokens.insert(0, '%evalauto')
+
         directive = tokens.pop(0)
 
-        if directive == '' or directive.isspace():
-            raise SyntaxError(
-                f'expression is white space or empty: {repr(directive)}'
-            )
-
-        # If it is not actually a directive just assume it is a Python
-        # expression that should be evaluated. Stick the token back in the
-        # queue so that it can be evaluated as an argument - makes the rest
-        # of the code simpler.
-        if directive[0] != '%':
-            tokens.insert(0, directive)
-            directive = _EVAL_DIRECTIVE
-
         if directive not in _DIRECTIVE_REGISTRY:
-            raise ValueError(f'invalid directive: {directive}')
+            raise DirectiveError(directive)
+
         cls = _DIRECTIVE_REGISTRY[directive]
+        sig = inspect.signature(cls)
 
-        # Operation classes define how many arguments are associated with the
-        # directives they service with annotated positional-only arguments.
-        # Find them.
+        # Collect additional arguments for the class.
+        args = []
 
-        sig = inspect.signature(cls.__init__)
-        pos_only = [
-            p for p in sig.parameters.values()
-            if p.kind == p.POSITIONAL_ONLY
-        ]
-        pos_only = pos_only[1:]  # First is 'self'
+        # The first argument is the directive, which have already consumed.
+        for param in tuple(sig.parameters.values())[1:]:
 
-        # Arguments for instantiating argument class
-        args = [directive]
-        for param in pos_only[1:]:
+            if param.kind != param.POSITIONAL_ONLY:
+                continue
 
-            # Ran out of CLI arguments but expected more
-            if not len(tokens):
-                raise ValueError(
-                    f"missing argument '{param.name}' for directive:"
-                    f" {directive}")
+            if not tokens:
+                raise DirectiveError(
+                    f"missing argument 'expression' for: {directive}"
+                )
+            else:
+                value = tokens.pop(0)
+                value = param.annotation(value)
+                args.append(value)
 
-            args.append(param.annotation(tokens.pop(0)))
-
-        # 'OpBaseExpression()' is special in that it receives scope information
-        # for Python's builtin 'eval()' and 'exec()' functions, and associated
-        # variables.
-        kwargs = {}
-        if issubclass(cls, OpBaseExpression):
-            kwargs.update(
-                variable=variable,
+        compiled.append(
+            cls(
+                directive,
+                *args,
                 scope=scope,
-                stream_variable=stream_variable
+                variable=variable,
+                stream_variable=stream_variable,
             )
-
-        compiled.append(cls(*args, **kwargs))
+        )
 
     return tuple(compiled)
 
@@ -337,7 +319,7 @@ def _peek(iterable):
     return first, it.chain([first], iterable)
 
 
-class OpBase(abc.ABC):
+class Directive(abc.ABC):
 
     """Base class for defining an operation.
 
@@ -349,12 +331,8 @@ class OpBase(abc.ABC):
     that contain a variety of information about how they should execute:
 
     directive
-      The directive currently being executed. Set to ``None`` to disable
-      registering. This behavior is useful for base classes that extend
-      ``OpBase()``.
-
-    directives
-      A list of all supported directives.
+      A string like ``%eval`` indicating which directive is being executed.
+      Subclassers may make decisions based on the name of the directive.
 
     variable
       When executing a Python expression, place the item currently being
@@ -366,7 +344,7 @@ class OpBase(abc.ABC):
       Like ``variable`` but for the entire ``stream`` object.
 
     scope
-      Use this as the global scope when exeucting expressions with Python's
+      Use this as the global scope when executing expressions with Python's
       builtin ``eval()`` function.
     """
 
@@ -375,7 +353,10 @@ class OpBase(abc.ABC):
             directive: str,
             # The slash below is significant! Its presence makes the preceding
             # args positional-only argument, which we look for elsewhere.
-            /
+            /,
+            scope: dict,
+            variable: str = _DEFAULT_VARIABLE,
+            stream_variable: str = _DEFAULT_STREAM_VARIABLE,
     ):
 
         """
@@ -385,6 +366,9 @@ class OpBase(abc.ABC):
         """
 
         self.directive = directive
+        self.scope = scope
+        self.variable = variable
+        self.stream_variable = stream_variable
 
     def __init_subclass__(cls):
 
@@ -411,8 +395,8 @@ class OpBase(abc.ABC):
         for param in pos_only:
             if param.annotation == inspect._empty:
                 raise RuntimeError(
-                    f"argument '{param.name}' for directive"
-                    f" '{cls.__name__}.__init__()' must have a type annotation"
+                    f"argument '{param.name}' for '{cls.__name__}.__init__()'"
+                    f" must have a type annotation"
                 )
 
     def __repr__(self):
@@ -449,57 +433,11 @@ class OpBase(abc.ABC):
         raise NotImplementedError  # pragma no cover
 
 
-class OpBaseExpression(OpBase):
+class DirectiveEval(Directive):
 
-    """Base class for operations evaluating an expression.
+    """Evaluate a Python expression or statement.
 
-    Typically by ``eval()`` or ``exec()``.
-    """
-
-    def __init__(
-            self,
-            directive: str,
-            expression: str,
-            /,
-            variable,
-            stream_variable,
-            scope
-    ):
-        """
-        :param str directive:
-            See parent implementation.
-        :param str variable:
-            Operations executing expressions with Python's ``eval()`` should
-            place data in this variable in the scope.
-        :param str stream_variable:
-            Like ``variable`` but for referencing the full stream of data.
-        :param dict scope:
-            Operations executing expressions with Python's ``eval(0)`` should
-            use this global scope.
-        """
-
-        super().__init__(directive)
-
-        self.expression = expression
-        self.variable = variable
-        self.stream_variable = stream_variable
-        self.scope = scope
-
-    def compiled_expression(self, mode):
-
-        """Compile a Python expression using the builtin ``compile()``."""
-
-        return builtins.compile(self.expression, '<string>', mode)
-
-
-class OpEval(OpBaseExpression):
-
-    """Evaluate a Python expression with Python's ``eval()``.
-
-    This operation receives special treatment in ``compile()``, but its
-    subclassers do not. When parsing the input expressions, anything not
-    associated with a directive is assumed to be a generic Python expression
-    that should be handled by this class.
+    Uses ``eval()`` and ``exec()``.
 
     In code terms, this:
 
@@ -518,40 +456,85 @@ class OpEval(OpBaseExpression):
         [1, 2, 3]
     """
 
-    def __call__(self, stream):
+    # Order matters. Aside from 'auto', this is the order in which compiling is
+    # tried. Most statements compile for 'exec', but in most cases the caller
+    # wants 'eval'.
+    supported_modes = ('auto', 'eval', 'exec')
 
-        # Compile the expression before doing anything else. If 'stream' is
-        # empty then some of the code below doesn't execute. Unfortunately
-        # this can only happen at runtime since this operation handles both
-        # 'exec()' and 'eval()'.
-        if self.directive == '%exec':
-            mode = 'exec'
-        else:
-            mode = 'eval'
-        compiled_expression = self.compiled_expression(mode)
+    def __init__(
+            self,
+            directive: str,
+            expression: str,
+            /,
+            *args,
+            mode,
+            operate_on_stream=False,
+            **kwargs,
+    ):
 
-        if self.directive == '%stream':
+        super().__init__(directive, *args, **kwargs)
+        self.expression = expression
+        self.operate_on_stream = operate_on_stream
 
-            # This method can receive any object, but convert it to an iterator
-            # to provide consistency before passing to the expression.
-            stream = (i for i in stream)
-
-            yield from builtins.eval(
-                compiled_expression,
-                self.scope,
-                {self.stream_variable: stream}
+        if self.expression == '' or self.expression.isspace():
+            raise SyntaxError(
+                f'expression is white space or empty: {repr(self.expression)}'
             )
 
-        elif self.directive == '%eval':
+        elif mode not in self.supported_modes:  # pragma no cover
+            raise ValueError(
+                f'invalid {mode=} expected one of:'
+                f' {" ".join(self.supported_modes)}'
+            )
 
+        if mode == 'auto':
+            try_modes = tuple(i for i in self.supported_modes if i != 'auto')
+        else:
+            try_modes = (mode, )
+
+        exc = None
+        for try_mode in try_modes:
+            try:
+                self.code = builtins.compile(
+                    self.expression,
+                    filename='<string>',
+                    mode=try_mode,
+                )
+                self.mode = try_mode
+                break
+            except SyntaxError as e:
+                exc = e
+        else:
+            raise exc
+
+        has_variable_conflict = (
+            self.variable in self.code.co_names
+            and self.stream_variable in self.code.co_names
+        )
+
+        if has_variable_conflict:
+            raise ValueError(
+                f'contains item and stream variables: {self.expression}'
+            )
+
+    def __repr__(self):
+        return '<{cname}({directive}, {expression})>'.format(
+            cname=self.__class__.__name__,
+            directive=self.directive,
+            expression=repr(self.expression),
+        )
+
+    def _call(self, stream, variable):
+
+        if self.mode == 'eval':
             for item in stream:
                 yield builtins.eval(
-                    compiled_expression,
+                    self.code,
                     self.scope,
-                    {self.variable: item}
+                    {variable: item}
                 )
 
-        elif self.directive == '%exec':
+        elif self.mode == 'exec':
 
             # Unlike 'eval()', 'exec()' executes statements, meaning that it
             # updates the scope in place. The current item must be extracted
@@ -566,22 +549,37 @@ class OpEval(OpBaseExpression):
 
                 local_scope[self.variable] = item
                 builtins.exec(
-                    compiled_expression,
+                    self.code,
                     self.scope,
                     local_scope
                 )
 
                 # It is possible to 'del variable'!
-                if self.variable in local_scope:
-                    yield local_scope[self.variable]
+                if variable in local_scope:
+                    yield local_scope[variable]
 
         else:  # pragma no cover
             raise DirectiveError(self.directive)
 
 
-class OpEvalIf(OpBaseExpression):
+    def __call__(self, stream):
 
-    """Like ``OpEval()``, but for optionally executing an expression.
+        if self.operate_on_stream:
+            stream = [(i for i in stream)]
+            variable = self.stream_variable
+        else:
+            variable = self.variable
+
+        out = self._call(stream, variable)
+        if self.operate_on_stream:
+            out = next(out)
+
+        yield from out
+
+
+class DirectiveEvalIf(Directive):
+
+    """Like ``DirectiveEval()``, but for optionally executing an expression.
 
     Does not filter. If the sentinel expression evaluates as ``False``, the
     item is emitted without evaluating the expression.
@@ -593,9 +591,9 @@ class OpEvalIf(OpBaseExpression):
             sentinel_expression: str,
             expression: str,
             /,
-            variable,
-            stream_variable,
-            scope
+            *args,
+            mode,
+            **kwargs
     ):
 
         """See base class for most parameters.
@@ -604,31 +602,29 @@ class OpEvalIf(OpBaseExpression):
             Determines if ``expression`` should be evaluated.
         """
 
-        super().__init__(
-            directive,
-            expression,
-            variable=variable,
-            stream_variable=stream_variable,
-            scope=scope
-        )
+        super().__init__(directive, *args, **kwargs)
 
+        self.expression = expression
         self.sentinel_expression = sentinel_expression
+        self.mode = mode
 
     def __call__(self, stream):
 
         selection, stream = it.tee(stream, 2)
 
-        selector = OpEval(
-            '%eval',
+        selector = DirectiveEval(
+            self.directive[:5],
             self.sentinel_expression,
             variable=self.variable,
+            mode='eval',
             stream_variable=self.stream_variable,
             scope=self.scope
         )
 
-        evaluator = OpEval(
-            self.directive[:-2],
+        evaluator = DirectiveEval(
+            self.directive[:5],
             self.expression,
+            mode=self.directive[1:5],
             variable=self.variable,
             stream_variable=self.stream_variable,
             scope=self.scope
@@ -657,7 +653,7 @@ class OpEvalIf(OpBaseExpression):
                 pass
 
 
-class OpFilter(OpBaseExpression):
+class DirectiveFilter(Directive):
 
     """Filter data based on a Python expression.
 
@@ -667,57 +663,61 @@ class OpFilter(OpBaseExpression):
       %filterfalse "i <= 2"
     """
 
+    def __init__(
+            self,
+            directive: str,
+            expression: str,
+            /,
+            *args,
+            filterfalse: bool = False,
+            **kwargs
+    ):
+        super().__init__(directive, *args, **kwargs)
+
+        if expression.lower() == 'none':
+            self.expression = 'None'
+            evaluator_expression = f'bool({self.variable})'
+        else:
+            self.expression = expression
+            evaluator_expression = self.expression
+
+        self.filterfalse = filterfalse
+        self.expression = expression
+
+        self.evaluator = DirectiveEval(
+            '%eval',
+            evaluator_expression,
+            *args,
+            mode='eval',
+            **kwargs,
+        )
+
+    def __repr__(self):
+        return '<{cname}({directive}, {expression}, filterfalse={ff})'.format(
+            cname=self.__class__.__name__,
+            directive=self.directive,
+            expression=repr(self.evaluator.expression),
+            ff=self.filterfalse
+        )
+
     def __call__(self, stream):
 
-        # Can't just use 'filter()' and 'it.filterfalse()' directly since we
-        # have to evaluate a Python expression somewhere. Instead, fork the
-        # stream and use one copy for evaluating expressions, and one copy
-        # for values to emit.
+        stream, selection = it.tee(stream, 2)
 
-        is_none = self.expression.lower() == 'none'
+        selection = self.evaluator(selection)
+        if self.filterfalse:
+            selection = (not i for i in selection)
 
-        # Just use 'filter()'. Hard to express as interactions with the
-        # parent 'OpEval()' class.
-        if is_none and self.directive == '%filter':
-            return filter(None, stream)
-
-        # Just use 'itertools.filterfalse()'. Hard to express as interactions
-        # with the parent 'OpEval()' class.
-        elif is_none and self.directive == '%filterfalse':
-            return it.filterfalse(None, stream)
-
-        # Implement via 'itertools.compress()'. Equivalent to:
-        #   filter(lambda i: <expression>, stream)
-        # which is extremely hard to structure. Instead, just rely on Python's
-        # 'truthy' checks.
-        elif self.directive in ('%filter', '%filterfalse'):
-
-            stream, selection = it.tee(stream, 2)
-
-            selection = (
-                builtins.eval(
-                    self.compiled_expression('eval'),
-                    self.scope,
-                    {self.variable: item}
-                )
-                for item in selection
-            )
-            if self.directive == '%filterfalse':
-                selection = (not s for s in selection)
-
-            return it.compress(stream, selection)
-
-        else:  # pragma no cover
-            raise DirectiveError(self.directive)
+        return it.compress(stream, selection)
 
 
-class OpAccumulate(OpBase):
+class DirectiveAccumulate(Directive):
 
     """Accumulate the entire stream into a single object."""
 
     def __call__(self, stream):
 
-        # At first glance the simplest implemenation is:
+        # At first glance the simplest implementation is:
         #   yield list(stream)
         # however, if 'stream' is empty this is equivalent to:
         #   yield []
@@ -727,7 +727,7 @@ class OpAccumulate(OpBase):
             yield stream
 
 
-class OpChain(OpBase):
+class DirectiveChain(Directive):
 
     """Flatten the stream by one level – like ``itertools.chain()``."""
 
@@ -736,7 +736,7 @@ class OpChain(OpBase):
         return it.chain.from_iterable(stream)
 
 
-class OpJSON(OpBase):
+class DirectiveJSON(Directive):
 
     """Serialize/deserialize JSON data.
 
@@ -761,7 +761,7 @@ class OpJSON(OpBase):
         return map(func, stream)
 
 
-class OpCSVDict(OpBase):
+class DirectiveCSVDict(Directive):
 
     """Read/write data via ``csv.DictReader()`` and ``csv.DictWriter()``.
 
@@ -804,9 +804,20 @@ class OpCSVDict(OpBase):
                 yield writer.writerow(row)
 
 
-class OpReversed(OpBase):
+class DirectiveReversed(Directive):
 
     """Reverse item/stream."""
+
+    def __init__(
+            self,
+            directive: str,
+            /,
+            *args,
+            revstream: bool = False,
+            **kwargs,
+    ):
+        super().__init__(directive, *args, **kwargs)
+        self.revstream = revstream
 
     def __call__(self, stream):
 
@@ -814,8 +825,10 @@ class OpReversed(OpBase):
         # when the object is immediately iterated over. So, to be more helpful,
         # we have some very extra special handling here.
 
-        # Reverse each item
-        if self.directive in ('%rev', '%reversed'):
+        if self.revstream:
+            yield from reversed(stream)
+
+        else:
 
             try:
                 first, stream = _peek(stream)
@@ -830,20 +843,8 @@ class OpReversed(OpBase):
             else:
                 yield from (tuple(reversed(i)) for i in stream)
 
-        # Reverse entire stream
-        elif self.directive in ('%revstream', '%reversedstream'):
 
-            # Popping items off of the queue avoids having two copies of the
-            # input data in-memory.
-            stream = deque(stream)
-            while stream:
-                yield stream.pop()
-
-        else:  # pragma no cover
-            raise DirectiveError(self.directive)
-
-
-class OpBatched(OpBase):
+class DirectiveBatched(Directive):
 
     """Group stream into chunks with no more than N elements.
 
@@ -872,68 +873,25 @@ class OpBatched(OpBase):
         while chunk := tuple(it.islice(stream, self.chunksize)):
             yield tuple(chunk)
 
-
-class OpStrNoArgs(OpBase):
-
-    """Text processing that doesn't require an argument.
-
-    Implements several directives mapping directly to ``str`` methods.
-    """
+class DirectiveString(Directive):
 
     def __call__(self, stream):
 
-        return map(op.methodcaller(self.directive[1:]), stream)
+        split = self.directive.split(':', 1)
 
-
-class OpStrOneArg(OpBase):
-
-    # Possibly differentiating between things like '%strip' and '%strips' is
-    # too much, and instead we should just have '%strip string'?
-
-    """Like ``OpStrNoArgs()`` but for methods requiring one argument.
-
-    Directives map directly to ``str`` methods. Note that some of these
-    directives are very similar to those implemented by ``OpStrNoArgs()``,
-    but without a default value.
-    """
-
-    def __init__(self, directive: str, argument: str, /, **kwargs):
-
-        """
-        :param str directive:
-            Working with this directive.
-        :param str argument:
-            For ``str`` method.
-        :param **kwargs kwargs:
-            For parent implementation.
-        """
-
-        super().__init__(directive, **kwargs)
-
-        self.argument = argument
-
-    def __call__(self, stream):
-
-        mapping = {
-            '%strips': 'strip',
-            '%lstrips': 'lstrip',
-            '%rstrips': 'rstrip',
-            '%splits': 'split',
-            '%lsplits': 'lsplit',
-            '%rsplits': 'rsplit',
-        }
-
-        method_name = mapping.get(self.directive, self.directive[1:])
-
-        if method_name == 'join':
-            return map(self.argument.join, stream)
-
+        args = []
+        if len(split) == 1:
+            directive = split[0]
         else:
-            func = op.methodcaller(method_name, self.argument)
-            return map(func, stream)
+            directive, arg = split
+            args.append(arg)
+
+        method = directive[1:]
+
+        return map(op.methodcaller(method, *args), stream)
 
 
-class OpReplace(OpBase):
+class DirectiveReplace(Directive):
 
     """Replace a portion of a string with a new string."""
 
@@ -960,7 +918,7 @@ class OpReplace(OpBase):
         return map(op.methodcaller('replace', self.old, self.new), stream)
 
 
-class OpCast(OpBase):
+class DirectiveCast(Directive):
 
     """Cast to a builtin Python type."""
 
@@ -969,7 +927,7 @@ class OpCast(OpBase):
         return map(func, stream)
 
 
-class OpISlice(OpBase):
+class DirectiveISlice(Directive):
 
     """Take at most the first N items from the stream."""
 
@@ -981,47 +939,50 @@ class OpISlice(OpBase):
         return it.islice(stream, self.count)
 
 
+class DirectivePartition(DirectiveString):
+    def __init__(self, directive: str, sep: str, /, *args, **kwargs):
+        super().__init__(f'{directive}:{sep}', *args, **kwargs)
+
+
 ###############################################################################
 # Directive Registry
 
 _DIRECTIVE_REGISTRY = {
-    '%accumulate': OpAccumulate,
-    '%batched': OpBatched,
-    '%bool': OpCast,
-    '%chain': OpChain,
-    '%csvd': OpCSVDict,
-    '%dict': OpCast,
-    '%eval': OpEval,
-    '%evalif': OpEvalIf,
-    '%exec': OpEval,
-    '%execif': OpEvalIf,
-    '%filter': OpFilter,
-    '%filterfalse': OpFilter,
-    '%float': OpCast,
-    '%int': OpCast,
-    '%islice': OpISlice,
-    '%join': OpStrOneArg,
-    '%json': OpJSON,
-    '%list': OpCast,
-    '%lower': OpStrNoArgs,
-    '%lstrip': OpStrNoArgs,
-    '%lstrips': OpStrOneArg,
-    '%partition': OpStrOneArg,
-    '%replace': OpReplace,
-    '%rev': OpReversed,
-    '%revstream': OpReversed,
-    '%rpartition': OpStrOneArg,
-    '%rstrip': OpStrNoArgs,
-    '%rstrips': OpStrOneArg,
-    '%set': OpCast,
-    '%split': OpStrNoArgs,
-    '%splits': OpStrOneArg,
-    '%str': OpCast,
-    '%stream': OpEval,
-    '%strip': OpStrNoArgs,
-    '%strips': OpStrOneArg,
-    '%tuple': OpCast,
-    '%upper': OpStrNoArgs,
+    '%accumulate': DirectiveAccumulate,
+    '%batched': DirectiveBatched,
+    '%bool': DirectiveCast,
+    '%chain': DirectiveChain,
+    '%csvd': DirectiveCSVDict,
+    '%dict': DirectiveCast,
+    '%eval': partial(DirectiveEval, mode='eval'),
+    '%evalauto': partial(DirectiveEval, mode='auto'),
+    '%evalif': partial(DirectiveEvalIf, mode='eval'),
+    '%exec': partial(DirectiveEval, mode='exec'),
+    '%execif': partial(DirectiveEvalIf, mode='exec'),
+    '%filter': DirectiveFilter,
+    '%filterfalse': partial(DirectiveFilter, filterfalse=True),
+    '%float': DirectiveCast,
+    '%int': DirectiveCast,
+    '%islice': DirectiveISlice,
+    '%join': DirectiveString,
+    '%json': DirectiveJSON,
+    '%list': DirectiveCast,
+    '%lower': DirectiveString,
+    '%lstrip': DirectiveString,
+    '%lstrips': DirectiveString,
+    '%partition': DirectivePartition,
+    '%replace': DirectiveReplace,
+    '%rev': DirectiveReversed,
+    '%revstream': partial(DirectiveReversed, revstream=True),
+    '%rpartition': DirectivePartition,
+    '%rstrip': DirectiveString,
+    '%set': DirectiveCast,
+    '%split': DirectiveString,
+    '%str': DirectiveCast,
+    '%stream': partial(DirectiveEval, mode='auto', operate_on_stream=True),
+    '%strip': DirectiveString,
+    '%tuple': DirectiveCast,
+    '%upper': DirectiveString,
 }
 
 
@@ -1358,15 +1319,17 @@ def _cli_entrypoint(rawargs=None):
         lines = [
             f'ERROR: expression contains a syntax error: {e.msg}',
             '',
-            f'    {e.text}',
+            # For some reason 'compile(..., mode=exec)' produces a
+            # 'SyntaxError' with a trailing newline, but 'mode=eval' does not!
+            f'    {e.text.rstrip(os.linesep)}',
             f'    {" " * (e.offset - 1)}^',
         ]
         print(os.linesep.join(lines), file=sys.stderr)
 
     # User interrupted with '^C' most likely, but technically this is just
-    # a SIGINT. Somehow this shows up in the coverage report generated by
-    # '$ pytest --cov'. No idea how that works!!
-    except KeyboardInterrupt:
+    # a SIGINT. At one point the code in the 'except' block showed up in the
+    # 'pytest-cov' report, but not anymore.
+    except KeyboardInterrupt:  # pragma no cover
         print()  # Don't get a trailing newline otherwise
         exit_code = 128 + signal.SIGINT
 
@@ -1375,25 +1338,16 @@ def _cli_entrypoint(rawargs=None):
         exit_code = 1
 
         # A 'RuntimeError()' indicates a problem that should have been caught
-        # during testing. We want a full traceback in these cases.
-        if 'PYIN_FULL_TRACEBACK' in os.environ or isinstance(e, RuntimeError):
+        # during testing. We want a full traceback in these cases, but not when
+        # the user provided an invalid directive name.
+        is_rte = isinstance(e, RuntimeError)
+        is_de = isinstance(e, DirectiveError)
+        if 'PYIN_FULL_TRACEBACK' in os.environ or (is_rte and not is_de):
             message = ''.join(traceback.format_exc()).rstrip()
         else:
             message = f"ERROR: {str(e)}"
 
         print(message, file=sys.stderr)
-
-    # If the input and/or file points to a file descriptor and is not 'stdin',
-    # close it. Avoids a Python warning about an unclosed resource.
-    for attr in ('infile', 'outfile'):
-        f = getattr(args, attr)
-        try:
-            fileno = getattr(f, 'fileno', lambda: None)()
-        except io.UnsupportedOperation:
-            continue
-
-        if fileno not in (None, 0, 1, 2):
-            f.close()
 
     exit(exit_code)
 

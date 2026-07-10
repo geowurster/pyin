@@ -19,17 +19,12 @@ A personal project.
 Command-Line Interface
 ======================
 
-The primary interface to ``pyin`` is the ``$ pyin`` command-line utility. It
-seeks to provide shorthand for the little scripts we developers write when
-quickly transforming small amounts of data. It can be quite flexible and
-powerful, but at a certain point the expressions become difficult to read and
-edit.
+The primary interface to ``pyin`` is the ``$ pyin`` command-line utility. It seeks to provide shorthand for the little scripts we developers write when quickly transforming small amounts of data. It can be quite flexible and powerful, but at a certain point the expressions become difficult to read and edit.
 
 Quoting
 -------
 
-Some (most? all?) shells (posix?) disable variable expansion inside of single
-quotes. Keep this in mind when writing expressions.
+Some (most? all?) shells (posix?) disable variable expansion inside of single quotes. Keep this in mind when writing expressions.
 
 Introduction
 ------------
@@ -76,13 +71,7 @@ The ``--gen`` flag's only requirement is that it produce an iterable object:
 Directives
 ----------
 
-A ``directive`` is a special shorthand for a pre-defined operation. All
-directives start with the ``%`` character. Directives are split into two
-categores: `Item Directives`_ and `Stream Directives`_. The former modifies
-each item in the ``stream``, and the latter has the ability to completely
-change the ``stream`` itself. For example, `%json`_ is an
-`Item Directive <Item Directives>`_, and `%csvd`_ is a
-`Stream Directive <Stream Directives>`_.
+A ``directive`` is a special shorthand for a pre-defined operation. All directives start with the ``%`` character. Directives are split into two categores: `Item Directives`_ and `Stream Directives`_. The former modifies each item in the ``stream``, and the latter has the ability to completely change the ``stream`` itself. For example, `%json`_ is an `Item Directive <Item Directives>`_, and `%csvd`_ is a`Stream Directive <Stream Directives>`_.
 
 A ``directive`` takes the place of a Python expression:
 
@@ -91,9 +80,7 @@ A ``directive`` takes the place of a Python expression:
     $ echo '[1, 2, 3]' | pyin %json 'sum(i)'
     6
 
-In some cases a ``directive`` has different behavior depending on what is
-passed to it. In this example the first `%json`_ call is decoding JSON data to
-a Python object, and the second is encoding:
+In some cases a ``directive`` has different behavior depending on what is passed to it. In this example the first `%json`_ call is decoding JSON data to a Python object, and the second is encoding:
 
 .. code::
 
@@ -105,8 +92,7 @@ A list of all directives and their use appears later in this document.
 Modifying the Stream
 --------------------
 
-Expressions are typically executed against each element in the stream, but it
-is also possible to modify the underlying data stream directly:
+Expressions are typically executed against each element in the stream, but it is also possible to modify the underlying data stream directly:
 
 .. code:
 
@@ -118,8 +104,7 @@ is also possible to modify the underlying data stream directly:
 Importing Objects
 -----------------
 
-All Python expressions are parsed for importable objects and automatically
-imported:
+All Python expressions are parsed for importable objects and automatically imported:
 
 .. code::
 
@@ -186,12 +171,7 @@ is equivalent to the Python code:
 Scope
 -----
 
-``pyin`` makes use of Python's builtin ``eval()``, which executes code within
-a ``scope`` with ``local`` and ``global`` variables. ``pyin`` only places the
-data being evaluated within the ``local`` variables, but provides a full
-``global`` scope containing all of the normal Python builtins plus some aliases
-to potentially useful modules and functions. This scope is somewhat hidden
-but can be investigated:
+``pyin`` makes use of Python's builtin ``eval()``, which executes code within a ``scope`` with ``local`` and ``global`` variables. ``pyin`` only places the data being evaluated within the ``local`` variables, but provides a full ``global`` scope containing all of the normal Python builtins plus some aliases to potentially useful modules and functions. This scope is somewhat hidden but can be investigated:
 
 .. code::
 
@@ -204,8 +184,7 @@ but can be investigated:
     op <class 'module'> operator
     reduce <class 'builtin_function_or_method'> reduce
 
-This is admittedly very hard to read, but rebuilding the command one expression
-at a time should reveal what is happening.
+This is admittedly very hard to read, but rebuilding the command one expression at a time should reveal what is happening.
 
 Environment Variables
 ---------------------
@@ -213,20 +192,14 @@ Environment Variables
 ``PYIN_FULL_TRACEBACK``
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-``$ pyin`` carefully manages how exceptions are raised and presented to the
-user to differentiate between problems with expressions, and problems with
-``$ pyin`` itself. In some cases it is helpful to get a full traceback.
+``$ pyin`` carefully manages how exceptions are raised and presented to the user to differentiate between problems with expressions, and problems with ``$ pyin`` itself. In some cases it is helpful to get a full traceback.
 
-The presence of this variable in the environment enables the feature regardless
-of its value.
+The presence of this variable in the environment enables the feature regardless of its value.
 
 Directives
 ==========
 
-A ``directive`` is a special operation that may or may not be possible to
-express as a Python expression. The ``%json`` directive is an example of one
-that is easy to re-implement, and the ``%csv`` directive is one that would be
-extremely difficult.
+A ``directive`` is a special operation that may or may not be possible to express as a Python expression. The ``%json`` directive is an example of one that is easy to re-implement, and the ``%csv`` directive is one that would be extremely difficult.
 
 Some directives require one or more arguments. They are noted as:
 
@@ -529,13 +502,9 @@ Parsing and serializing well-known formats.
 ``%csvd``
 ^^^^^^^^^
 
-Encode/decode a CSV. If the input is a stream it is read with
-``csv.DictReader()`` in a manner that is equivalent to:
-``%stream 'csv.DictReader(s)'``.
+Encode/decode a CSV. If the input is a stream it is read with ``csv.DictReader()`` in a manner that is equivalent to: ``%stream 'csv.DictReader(s)'``.
 
-If the input data is a dictionary, first a header row is written with all
-fields, and then all records are written with ``csv.QUOTE_ALL``. It is not
-feasible to recreate this behavior with an expression.
+If the input data is a dictionary, first a header row is written with all fields, and then all records are written with ``csv.QUOTE_ALL``. It is not feasible to recreate this behavior with an expression.
 
 ``%json``
 ^^^^^^^^^
@@ -560,8 +529,7 @@ Altering how items within the stream are grouped.
 ``%accumulate``
 ^^^^^^^^^^^^^^^
 
-Accumulate all elements in the stream into a single iterable object. Equivalent
-to ``%stream '[list(s)]'``.
+Accumulate all elements in the stream into a single iterable object. Equivalent to ``%stream '[list(s)]'``.
 
 ``%batched``
 ^^^^^^^^^^^^
@@ -570,8 +538,7 @@ to ``%stream '[list(s)]'``.
 
   %stream 'itertools.batched(s, N)'
 
-For Python 3.12 onward, this is equivalent to
-``%stream 'itertools.batched(s, <N>)'``. For older versions of Python:
+For Python 3.12 onward, this is equivalent to ``%stream 'itertools.batched(s, <N>)'``. For older versions of Python:
 
 .. code::
 
@@ -605,8 +572,7 @@ Equivalent to:
 ``%revstream``
 ^^^^^^^^^^^^^^
 
-Reverse the entire stream. Done in a memory efficient manner. Equivalent to
-both of the snippets below. See `%rev`_ for more details.
+Reverse the entire stream. Done in a memory efficient manner. Equivalent to both of the snippets below. See `%rev`_ for more details.
 
 ::
 
@@ -621,12 +587,7 @@ Directives not belonging to another category.
 ``%rev``
 ^^^^^^^^
 
-In theory this is equivalent to ``"reversed(i)"``, but in practice often
-equivalent to ``"i[::-1]"``. Calling ``reversed()`` on a string produces a
-``reversed object``, but reversing a string with slicing like ``string[::-1]``
-does produce a string. Same for lists and tuples. This directive knows about
-a few of these special cases, and attempts to preserve type. it will sometimes
-be wrong.
+In theory this is equivalent to ``"reversed(i)"``, but in practice often equivalent to ``"i[::-1]"``. Calling ``reversed()`` on a string produces a ``reversed object``, but reversing a string with slicing like ``string[::-1]`` does produce a string. Same for lists and tuples. This directive knows about a few of these special cases, and attempts to preserve type. it will sometimes be wrong.
 
 Low-level Directives
 --------------------
@@ -638,9 +599,7 @@ Low-level Directives
 
   %eval <expression>
 
-Mostly users do not need to be aware of this directive. Internally, ``pyin``
-assumes that any expression not associated with a ``directive`` belongs to
-``%eval``. In code terms, these are equivalent:
+Mostly users do not need to be aware of this directive. Internally, ``pyin`` assumes that any expression not associated with a ``directive`` belongs to ``%eval``. In code terms, these are equivalent:
 
 ::
 
@@ -695,14 +654,12 @@ Evaluate an expression on the stream itself.
 Library Reference
 =================
 
-Manual for the ``pyin`` Python library. `pyin.eval()`_ is mostly what users
-should interact with.
+Manual for the ``pyin`` Python library. `pyin.eval()`_ is mostly what users should interact with.
 
 ``pyin.eval()``
 ---------------
 
-Evaluate one or more Python ``expressions`` against a ``stream`` of data. This
-snippet:
+Evaluate one or more Python ``expressions`` against a ``stream`` of data. This snippet:
 
 .. code::
 
@@ -727,12 +684,7 @@ is equivalent to:
 ``pyin.main()``
 ---------------
 
-Entrypoint to the CLI for use within Python. Does not catch all exceptions.
-A compliant argument parser is available via the ``argparse_parser()``
-function. While not part of the official API, the ``_cli_entrypoint()``
-function may be worth referencing. It contains an additional layer of error
-handling for the ``$ pyin`` utility and exists to bridge the gap between the
-shell and ``main()``.
+Entrypoint to the CLI for use within Python. Does not catch all exceptions. A compliant argument parser is available via the ``argparse_parser()`` function. While not part of the official API, the ``_cli_entrypoint()`` function may be worth referencing. It contains an additional layer of error handling for the ``$ pyin`` utility and exists to bridge the gap between the shell and ``main()``.
 
 ``pyin.argparse_parser()``
 --------------------------
@@ -742,68 +694,42 @@ An ``argparse.ArgumentParser()`` compatible with ``main()``.
 ``pyin.compile()``
 ------------------
 
-Parses expressions and constructs the ``operation`` objects necessary to
-execute them. Users should not need to interact with this function.
+Parses expressions and constructs the ``Directive()`` objects necessary to execute them. Users should not need to interact with this function.
 
 ``pyin.importer()``
 -------------------
 
-Parses expressions and attempts to import the objects they reference into a
-single global scope. Users should not need to interact with this function.
+Parses expressions and attempts to import the objects they reference into a single global scope. Users should not need to interact with this function.
 
-``pyin.OpBase()``
+``pyin.Directive()``
 -----------------
 
-Base class for implementing an ``operation``. One ``operation`` implements one
-or more ``directives``. See section below on `Implementing an Operation`_.
-
-``pyin.OpBaseExpression()``
----------------------------
-
-Like `pyin.OpBase()`_, but for an operation that is instantiated with
-additional information. These classes receive a global ``scope`` intended for
-use with Python's builtin ``eval()`` and ``exec()`` functions, and variable
-names in which data should be placed when evaluating an expression.
+Base class for implementing a directive. One class can serve multiple directives. See section on `Implementing a Directive`_.
 
 ``pyin.DirectiveError()``
 -------------------------
 
-Indicates a directive is invalid or unusable in some manner. Subclasses
-``RuntimeError()`` to trigger some of the special traceback handling in
-``$ pyin``. Typically this exception should only be raised when something is
-systematically wrong with how ``pyin`` was developed, not incorrect use.
+Indicates a directive is invalid or unusable in some manner. Subclasses ``RuntimeError()`` to trigger some of the special traceback handling in ``$ pyin``. Typically this exception should only be raised when something is systematically wrong with how ``pyin`` was developed, not incorrect use.
 
 
-Implementing an Operation
+Implementing a Directive
 =========================
 
-An ``operation`` is a single class containing the code implementing one or more
-``directives``. Each ``operation`` class can implement multiple ``directives``.
-Admittedly, the term ``operation`` doesn't make much sense, but here we are.
-
-In theory this is pluggable...
+A ``directive`` is an abbreviation for some kind of desired processing. For example, the ``%json`` directive will serialize or deserialize a JSON object depending on what it receives. Each ``directive`` is served by a single class, and that class can serve multiple directives. ``%filter`` and ``%filterfalse`` are both backed by ``DirectiveFilter()`` in different configurations.
 
 Naming a Directive
 ------------------
 
-A directive should ideally map directly to a Python function or common shell
-utility. For example, the ``%rev`` directive is identical to the ``$ rev``
-utility. ``%reversed`` would also be an acceptable name, but is probably too
-long. However, directives should have one name and one name only - it is not
-OK to register both ``%rev`` and ``%reversed`` and use one as an alias for
-the other. Stick with the Zen of Python:
+A directive should ideally map directly to a Python function or common shell utility. For example, the ``%rev`` directive is identical to the ``$ rev`` utility. ``%reversed`` would also be an acceptable name, but is probably too long. However, directives should have one name and one name only - it is not OK to register both ``%rev`` and ``%reversed`` and use one as an alias for the other. Stick with the Zen of Python:
 
 .. code::
 
     $ python -m this | grep "There should be one"
     There should be one-- and preferably only one --obvious way to do it.
 
-Subclassing `pyin.OpBase()`_
-----------------------------
+Subclassing `pyin.Directive()`_
+-------------------------------
 
-An ``operation`` must subclass ``pyin.OpBase()`` and implement at least the
-``__call__()`` method. The ``operation`` lists which ``directives`` it
-supports, at call time knows which ``directive`` it is executing, and receives
-a global scope to execute within. See the ``pyin.OpBase()`` class's source
-code for more information. ``pyin.OpEval()`` and ``pyin.OpJSON()`` are also
-good references.
+A ``directive`` must be registered in ``pyin._DIRECTIVE_REGISTRY``, and be backed by an implementation subclassing ``pyin.Directive()``. The implementation's ``__call__()`` method receives an iterable object, and should not be attached to the exact type of that object. Ideally ``__call__()`` returns an `iterator <https://docs.python.org/3/glossary.html#term-iterator>`_, but it can return any iterable object or ``yield`` a series of items.
+
+``pyin.DirectiveJSON()`` is an example of a fairly simple implementation, and ``pyin.DirectiveEval()`` is an example of a more complicated one.

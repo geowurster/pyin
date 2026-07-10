@@ -15,13 +15,12 @@ def test_subclass_missing_positional_only_args():
 
     with pytest.raises(RuntimeError) as e:
 
-        class OpBroken(pyin.OpBase):
-
+        class DirectiveBroken(pyin.Directive):
             def __init__(self, directive):
                 super().__init__(
                     directive, variable='_', stream_variable='_', scope={})
 
-    assert 'OpBroken.__init__()' in str(e.value)
+    assert 'DirectiveBroken.__init__()' in str(e.value)
     assert 'lacks the positional-only arguments' in str(e.value)
 
 
@@ -30,12 +29,11 @@ def test_subclass_missing_type_annotation():
     """Positional-only args must have type hints."""
 
     with pytest.raises(RuntimeError) as e:
-
-        class OpBroken(pyin.OpBase):
+        class DirectiveBroken(pyin.DirectiveFilter):
             def __init__(self, directive, /, **kwargs):
                 super().__init__(directive, **kwargs)
 
-    assert "OpBroken.__init__()" in str(e.value)
+    assert "DirectiveBroken.__init__()" in str(e.value)
     assert "argument 'directive'" in str(e.value)
     assert "must have a type annotation" in str(e.value)
 
@@ -46,24 +44,24 @@ def test_subclass_missing_positional_only_arguments():
 
     with pytest.raises(RuntimeError) as e:
 
-        class OpBroken(pyin.OpBase):
+        class DirectiveBroken(pyin.Directive):
             def __init__(self, directive, arg, **kwargs):
                 super().__init__(directive, **kwargs)
 
-    assert "OpBroken.__init__() is malformed" in str(e.value)
+    assert "DirectiveBroken.__init__() is malformed" in str(e.value)
     assert "lacks the positional-only arguments" in str(e.value)
 
 
-def test_OpBase_repr():
+def test_Directive_repr():
 
-    """Check :meth:`OpBase.__repr__()`"""
+    """Check 'Directive.__repr__()'."""
 
-    class Op(pyin.OpBase):
+    class DirectiveRepr(pyin.Directive):
         def __call__(self, stream):
             raise NotImplementedError
 
-    o = Op('%dir')
-    assert repr(o) == '<Op(%dir, ...)>'
+    o = DirectiveRepr('%directive', scope={})
+    assert repr(o) == '<DirectiveRepr(%directive, ...)>'
 
 
 def test_DirectiveError():

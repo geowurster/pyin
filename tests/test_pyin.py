@@ -371,3 +371,27 @@ def test_expressions_white_space(expr, message, runner):
     assert result.exit_code == 2
     assert not result.output
     assert message.format(tag='--gen') in result.err
+
+
+def test_output_file(runner, tmp_path):
+
+    """Write to an output file."""
+
+    outfile = tmp_path / 'test_output_file.txt'
+
+    # A text file like:
+    #   0
+    #   1
+    #   2
+    expected = ''.join(f'{i}{os.linesep}' for i in range(3))
+
+    result = runner.invoke(
+        _cli_entrypoint,
+        ['--gen', 'range(3)', '--outfile', str(outfile),],
+    )
+
+    assert result.exit_code == 0
+    assert not result.output
+    assert not result.err
+
+    assert outfile.read_text() == expected

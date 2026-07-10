@@ -10,9 +10,9 @@ import pytest
 import pyin
 
 
-def test_single_expr():
+def test_single_expression():
     result = list(pyin.eval(["%filter", "20 <= i <= 80"], range(100)))
-    assert len(result) == len(list(range(20, 81)))
+    assert len(result) == len(range(20, 81))
     for item in result:
         assert 20 <= item <= 80
 
@@ -58,3 +58,13 @@ def test_with_generator():
     results = list(pyin.eval(expressions, ['word']))
 
     assert results == [True]
+
+
+def test_variable_conflict():
+
+    """Expression references item and stream variables."""
+
+    with pytest.raises(ValueError) as excinfo:
+        pyin.compile('i + s')
+
+    assert 'item and stream' in str(excinfo.value)
