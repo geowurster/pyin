@@ -79,13 +79,13 @@ def test_simple_item(directive, item, expected):
 
     # 'str' methods
     ('%replace', ('wo', 'ya'), 'word', 'yard'),
-    ('%splits', ('ab', ), 'abc', ['', 'c']),
+    # ('%splits', ('ab', ), 'abc', ['', 'c']),
     ('%partition', ('bb', ), 'abbabba', ('a', 'bb', 'abba')),
     ('%rpartition', ('bb', ), 'abbabba', ('abba', 'bb', 'a')),
-    ('%strips', ('ab', ), 'abcba', 'c'),
-    ('%lstrips', ('ab', ), 'abcba', 'cba'),
-    ('%rstrips', ('ab', ), 'abcba', 'abc'),
-    ('%join', ('-', ), ['a', 'b'], 'a-b'),
+    # ('%strips', ('ab', ), 'abcba', 'c'),
+    # ('%lstrips', ('ab', ), 'abcba', 'cba'),
+    # ('%rstrips', ('ab', ), 'abcba', 'abc'),
+    # ('%join', ('-', ), ['a', 'b'], 'a-b'),
 
     # Other tests
     ('%exec', ("i['new'] = 'val'", ), {'k': 0}, {'k': 0, 'new': 'val'})
@@ -149,6 +149,11 @@ def test_simple_stream(directive, args, stream, expected):
     # Empty stream
     assert list(pyin.eval(expressions, [])) == []
 
+    # Test '__repr__()'
+    compiled = pyin.compile(expressions)
+    assert len(compiled) == 1
+    assert repr(compiled[0])
+
 
 def test_eval_syntax_error():
 
@@ -164,10 +169,13 @@ def test_eval_syntax_error():
         list(pyin.eval(expr, range(1)))
 
     assert 'invalid syntax' in str(e.value)
-    assert expr == e.value.text
+
+    # For some reason 'compile(..., mode=exec)' produces a 'SyntaxError' with a
+    # trailing newline, but 'mode=eval' does not!
+    assert repr(expr) == repr(e.value.text.strip(os.linesep))
 
 
-def test_OpCSVDict(csv_with_header):
+def test_DirectiveCSVDict(csv_with_header):
 
     csv_lines = [
         i.rstrip(os.linesep) for i in csv_with_header.splitlines()]

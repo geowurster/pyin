@@ -9,38 +9,18 @@ import pytest
 import pyin
 
 
-def test_directive_registry_conflict():
-
-    """Two operations register the same directive."""
-
-    class Op1(pyin.OpBase, directives=('%dir', )):
-        pass
-
-    with pytest.raises(RuntimeError) as e:
-
-        # The test lives in 'OpBase.__init_subclass__()', so the class
-        # cannot even be defined.
-        class Op2(pyin.OpBase, directives=('%dir', )):
-            pass
-
-    assert "directive '%dir' conflict" in str(e.value)
-    assert 'Op1' in str(e.value)
-    assert 'Op2' in str(e.value)
-
-
 def test_subclass_missing_positional_only_args():
 
     """Subclasses must define positional-only args."""
 
     with pytest.raises(RuntimeError) as e:
 
-        class OpBroken(pyin.OpBase, directives=('%test', )):
-
+        class DirectiveBroken(pyin.Directive):
             def __init__(self, directive):
                 super().__init__(
                     directive, variable='_', stream_variable='_', scope={})
 
-    assert 'OpBroken.__init__()' in str(e.value)
+    assert 'DirectiveBroken.__init__()' in str(e.value)
     assert 'lacks the positional-only arguments' in str(e.value)
 
 
@@ -49,12 +29,11 @@ def test_subclass_missing_type_annotation():
     """Positional-only args must have type hints."""
 
     with pytest.raises(RuntimeError) as e:
-
-        class OpBroken(pyin.OpBase, directives=('%test',)):
+        class DirectiveBroken(pyin.DirectiveFilter):
             def __init__(self, directive, /, **kwargs):
                 super().__init__(directive, **kwargs)
 
-    assert "OpBroken.__init__()" in str(e.value)
+    assert "DirectiveBroken.__init__()" in str(e.value)
     assert "argument 'directive'" in str(e.value)
     assert "must have a type annotation" in str(e.value)
 
@@ -65,50 +44,24 @@ def test_subclass_missing_positional_only_arguments():
 
     with pytest.raises(RuntimeError) as e:
 
-        class OpBroken(pyin.OpBase, directives=('%test', )):
+        class DirectiveBroken(pyin.Directive):
             def __init__(self, directive, arg, **kwargs):
                 super().__init__(directive, **kwargs)
 
-    assert "OpBroken.__init__() is malformed" in str(e.value)
+    assert "DirectiveBroken.__init__() is malformed" in str(e.value)
     assert "lacks the positional-only arguments" in str(e.value)
 
 
-@pytest.mark.parametrize('directive', ['test', '%%test'])
-def test_OpBase_subclass_no_prefix(directive):
+def test_Directive_repr():
 
-    with pytest.raises(RuntimeError) as e:
+    """Check 'Directive.__repr__()'."""
 
-        class OpTest(pyin.OpBase, directives=(directive, )):
-
-            def __init__(self, directive: str, /, **kwargs):
-                super().__init__(directive, **kwargs)
-
-    msg = f"'{directive}' for class 'OpTest' is not prefixed with a single '%'"
-    assert msg in str(e.value)
-
-
-def test_OpBase_repr():
-
-    """Check :meth:`OpBase.__repr__()`"""
-
-    class Op(pyin.OpBase, directives=('%dir', )):
+    class DirectiveRepr(pyin.Directive):
         def __call__(self, stream):
             raise NotImplementedError
 
-    o = Op('%dir')
-    assert repr(o) == '<Op(%dir, ...)>'
-
-
-def test_OpBase_init_directive_mismatch():
-
-    class Op(pyin.OpBase, directives=('%dir', )):
-        def __call__(self, stream):
-            raise NotImplementedError
-
-    with pytest.raises(RuntimeError) as e:
-        Op('%mismatch')
-
-    assert "with directive '%mismatch' but supports: %dir" in str(e.value)
+    o = DirectiveRepr('%directive', scope={})
+    assert repr(o) == '<DirectiveRepr(%directive, ...)>'
 
 
 def test_DirectiveError():
