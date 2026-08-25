@@ -110,7 +110,9 @@ def compile(
         expressions,
         variable=_DEFAULT_VARIABLE,
         stream_variable=_DEFAULT_STREAM_VARIABLE,
-        scope=None):
+        scope=None,
+        global_scope=None,
+):
 
     """Compile expressions to ``pyin`` objects.
 
@@ -125,6 +127,8 @@ def compile(
         Like ``variable`` but when referencing the entire data stream.
     :param dict or None scope:
         Import into this dictionary.
+    :param dict or None global_scope:
+        Also expose this global scope to all directives.
 
     :rtype sequence:
 
@@ -142,6 +146,9 @@ def compile(
     # the latter does not.
     if scope is None:
         scope = {}
+
+    if global_scope is None:
+        global_scope = _DEFAULT_SCOPE
 
     compiled = []
     while tokens:
@@ -183,6 +190,7 @@ def compile(
                 directive,
                 *args,
                 scope=scope,
+                global_scope=global_scope,
                 variable=variable,
                 stream_variable=stream_variable,
             )
@@ -246,6 +254,7 @@ def eval(
         expressions,
         stream,
         scope=None,
+        global_scope=None,
         variable=_DEFAULT_VARIABLE,
         stream_variable=_DEFAULT_STREAM_VARIABLE
 ):
@@ -276,12 +285,8 @@ def eval(
     if scope is None:
         scope = {}
 
-    # Update with standard baseline
-    scope.update(_DEFAULT_SCOPE)
-
-    # Make the scope discoverable with a bit of introspection. Callers may
-    # want to find out what is available. This is documented.
-    scope['_scope'] = scope
+    if global_scope is None:
+        global_scope = _DEFAULT_SCOPE
 
     importer(expressions, scope=scope)
     compiled_expressions = compile(
@@ -355,6 +360,7 @@ class Directive(abc.ABC):
             # args positional-only argument, which we look for elsewhere.
             /,
             scope: dict,
+            global_scope: dict | None = None,
             variable: str = _DEFAULT_VARIABLE,
             stream_variable: str = _DEFAULT_STREAM_VARIABLE,
     ):
@@ -365,8 +371,12 @@ class Directive(abc.ABC):
             classes can support multiple directives.
         """
 
+        if global_scope is None:
+            global_scope = _DEFAULT_SCOPE
+
         self.directive = directive
         self.scope = scope
+        self.global_scope = global_scope
         self.variable = variable
         self.stream_variable = stream_variable
 
@@ -528,10 +538,11 @@ class DirectiveEval(Directive):
 
         if self.mode == 'eval':
             for item in stream:
+                self.scope[variable] = item
                 yield builtins.eval(
                     self.code,
+                    self.global_scope,
                     self.scope,
-                    {variable: item}
                 )
 
         elif self.mode == 'exec':
@@ -546,17 +557,16 @@ class DirectiveEval(Directive):
 
             local_scope = {}
             for item in stream:
-
-                local_scope[self.variable] = item
+                self.scope[self.variable] = item
                 builtins.exec(
                     self.code,
+                    self.global_scope,
                     self.scope,
-                    local_scope
                 )
 
                 # It is possible to 'del variable'!
-                if variable in local_scope:
-                    yield local_scope[variable]
+                if variable in self.scope:
+                    yield self.scope[variable]
 
         else:  # pragma no cover
             raise DirectiveError(self.directive)
@@ -618,7 +628,8 @@ class DirectiveEvalIf(Directive):
             variable=self.variable,
             mode='eval',
             stream_variable=self.stream_variable,
-            scope=self.scope
+            scope=self.scope,
+            global_scope=self.global_scope,
         )
 
         evaluator = DirectiveEval(
@@ -627,7 +638,8 @@ class DirectiveEvalIf(Directive):
             mode=self.directive[1:5],
             variable=self.variable,
             stream_variable=self.stream_variable,
-            scope=self.scope
+            scope=self.scope,
+            global_scope=self.global_scope,
         )
 
         selection = selector(selection)

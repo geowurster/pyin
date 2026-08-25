@@ -68,3 +68,20 @@ def test_variable_conflict():
         pyin.compile('i + s')
 
     assert 'item and stream' in str(excinfo.value)
+
+
+def test_shared_local_scope():
+
+    """Variables should persist across expressions."""
+
+    results = pyin.eval(
+        [
+            'j = i',
+            'i + j',
+        ],
+        range(3),
+    )
+
+    expected = [0, 2, 4]
+
+    assert expected == list(results)
