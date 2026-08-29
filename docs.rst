@@ -145,7 +145,7 @@ A more complex example mixing directives, expressions, etc.:
         'i[::2]' \
         %stream '[" ".join(i) for i in s]'
     New License
-    Copyright 2015-2024, D.
+    Copyright 2015-2026, D.
     All reserved.
 
 is equivalent to the Python code:
@@ -165,7 +165,7 @@ is equivalent to the Python code:
     ...         i = i[::2]
     ...         print(" ".join(i))
     New License
-    Copyright 2015-2024, D.
+    Copyright 2015-2026, D.
     All reserved.
 
 Scope
